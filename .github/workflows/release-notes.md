@@ -5,6 +5,8 @@ on:
     types: [created]
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 tools:
   github:
     toolsets: [pull_requests, issues]
