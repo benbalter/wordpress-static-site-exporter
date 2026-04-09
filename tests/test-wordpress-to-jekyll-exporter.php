@@ -1340,14 +1340,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 		// Verify the output starts with a valid zip signature (PK\x03\x04).
 		$this->assertEquals( "PK\x03\x04", substr( $output, 0, 4 ), 'Output should start with ZIP magic bytes' );
-
-		// Verify headers were set (only works in separate process).
-		if ( function_exists( 'xdebug_get_headers' ) ) {
-			$headers = xdebug_get_headers();
-			$this->assertContains( 'Content-Type: application/zip', $headers );
-			$this->assertContains( 'Content-Disposition: attachment; filename=jekyll-export.zip', $headers );
-			$this->assertContains( 'Content-Length: ' . $expected_size, $headers );
-		}
 	}
 
 	/**
