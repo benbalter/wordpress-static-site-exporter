@@ -1315,9 +1315,14 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that send() sets correct HTTP headers
+	 * Test that send() outputs the zip file contents with correct size
+	 *
+	 * Note: header() calls cannot be verified in PHPUnit because output has
+	 * already started. We verify the output content and size match the zip file.
+	 *
+	 * @runInSeparateProcess
 	 */
-	function test_send_sets_headers() {
+	function test_send_outputs_zip_content() {
 		global $jekyll_export;
 
 		// Create a zip file to send.
@@ -1325,24 +1330,80 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$jekyll_export->zip();
 
 		$this->assertFileExists( $jekyll_export->zip );
+		$expected_size = filesize( $jekyll_export->zip );
 
 		// Capture output from send().
 		ob_start();
 		$jekyll_export->send();
 		$output = ob_get_clean();
 
-		// Verify that the output contains zip content (not empty).
-		$this->assertNotEmpty( $output, 'send() should output the zip file contents' );
+		// Verify the output matches the zip file size.
+		$this->assertEquals( $expected_size, strlen( $output ), 'Output size should match zip file size' );
+
+		// Verify the output starts with a valid zip signature (PK\x03\x04).
+		$this->assertEquals( "PK\x03\x04", substr( $output, 0, 4 ), 'Output should start with ZIP magic bytes' );
+
+		// Verify headers were set (only works in separate process).
+		if ( function_exists( 'xdebug_get_headers' ) ) {
+			$headers = xdebug_get_headers();
+			$this->assertContains( 'Content-Type: application/zip', $headers );
+			$this->assertContains( 'Content-Disposition: attachment; filename=jekyll-export.zip', $headers );
+			$this->assertContains( 'Content-Length: ' . $expected_size, $headers );
+		}
 	}
 
 	/**
-	 * Test that callback() requires manage_options capability
+	 * Test that callback() does not export for non-admin users
 	 */
-	function test_callback_requires_capability() {
+	function test_callback_blocks_non_admin() {
 		global $jekyll_export;
 
-		// Verify the callback method exists and is callable.
-		$this->assertTrue( method_exists( $jekyll_export, 'callback' ) );
-		$this->assertTrue( is_callable( array( $jekyll_export, 'callback' ) ) );
+		// Create a subscriber user (no manage_options capability).
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		// Set up the screen and GET params to simulate an export request.
+		$_GET['type'] = 'jekyll';
+		$_GET['_wpnonce'] = wp_create_nonce( 'jekyll_export' );
+		set_current_screen( 'export' );
+
+		// Track whether export() is called by checking if temp dir changes.
+		$dir_before = $jekyll_export->dir;
+
+		// callback() should return early without calling export().
+		$jekyll_export->callback();
+
+		// The dir should remain unchanged (export() was not called).
+		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run for non-admin users' );
+
+		// Clean up.
+		unset( $_GET['type'], $_GET['_wpnonce'] );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Test that callback() does not export with missing nonce
+	 */
+	function test_callback_blocks_missing_nonce() {
+		global $jekyll_export;
+
+		// Set up as admin.
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		// Set up screen and GET params but without nonce.
+		$_GET['type'] = 'jekyll';
+		set_current_screen( 'export' );
+
+		$dir_before = $jekyll_export->dir;
+
+		// callback() should return early without calling export().
+		$jekyll_export->callback();
+
+		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run without a valid nonce' );
+
+		// Clean up.
+		unset( $_GET['type'] );
+		wp_set_current_user( 0 );
 	}
 }

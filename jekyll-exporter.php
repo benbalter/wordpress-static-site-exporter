@@ -454,9 +454,11 @@ class Jekyll_Export {
 		}
 
 		// Query only the needed options instead of loading all options.
+		// Use a sentinel object to distinguish "missing" from "stored as false".
+		$missing_option = new stdClass();
 		foreach ( array_unique( $option_keys ) as $key ) {
-			$value = get_option( $key );
-			if ( false !== $value ) {
+			$value = get_option( $key, $missing_option );
+			if ( $missing_option !== $value ) {
 				$options[ $key ] = maybe_unserialize( $value );
 			}
 		}

@@ -50,7 +50,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 * @param array $args       Positional arguments.
 		 * @param array $assoc_args Associative arguments.
 		 */
-		function __invoke( $args = array(), $assoc_args = array() ) {
+		public function __invoke( $args = array(), $assoc_args = array() ) {
 			global $jekyll_export;
 
 			// Set up taxonomy filters based on CLI arguments.
