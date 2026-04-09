@@ -15,7 +15,7 @@ jobs:
     strategy: 
       matrix:
         php_version: [8.4]
-        wp_version: [latest, '6.7', '6.9']
+        wp_version: [latest, '6.8', '6.9']
         wp_multisite: [0]
         include:
           - php_version: 8.3

@@ -4,7 +4,7 @@
  *
  * @package    JekyllExporter
  * @author     Ben Balter <ben@balter.com>
- * @copyright  2013-2021 Ben Balter
+ * @copyright  2013-2025 Ben Balter
  * @license    GPLv3
  * @link       https://github.com/benbalter/wordpress-to-jekyll-exporter/
  */
@@ -1312,5 +1312,88 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '| Header 1 | Header 2 |', $content );
 		$this->assertStringContainsString( '| Cell 1 | Cell 2 |', $content );
 		$this->assertStringContainsString( '|---|---|', $content, 'Table should have two column separators' );
+	}
+
+	/**
+	 * Test that send() outputs the zip file contents with correct size
+	 *
+	 * Note: header() calls cannot be verified in PHPUnit because output has
+	 * already started. We verify the output content and size match the zip file.
+	 */
+	function test_send_outputs_zip_content() {
+		global $jekyll_export;
+
+		// Create a zip file to send.
+		file_put_contents( $jekyll_export->dir . '/test.txt', 'test content' );
+		$jekyll_export->zip();
+
+		$this->assertFileExists( $jekyll_export->zip );
+		$expected_size = filesize( $jekyll_export->zip );
+
+		// Capture output from send().
+		ob_start();
+		$jekyll_export->send();
+		$output = ob_get_clean();
+
+		// Verify the output matches the zip file size.
+		$this->assertEquals( $expected_size, strlen( $output ), 'Output size should match zip file size' );
+
+		// Verify the output starts with a valid zip signature (PK\x03\x04).
+		$this->assertEquals( "PK\x03\x04", substr( $output, 0, 4 ), 'Output should start with ZIP magic bytes' );
+	}
+
+	/**
+	 * Test that callback() does not export for non-admin users
+	 */
+	function test_callback_blocks_non_admin() {
+		global $jekyll_export;
+
+		// Create a subscriber user (no manage_options capability).
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		// Set up the screen and GET params to simulate an export request.
+		$_GET['type'] = 'jekyll';
+		$_GET['_wpnonce'] = wp_create_nonce( 'jekyll_export' );
+		set_current_screen( 'export' );
+
+		// Track whether export() is called by checking if temp dir changes.
+		$dir_before = $jekyll_export->dir;
+
+		// callback() should return early without calling export().
+		$jekyll_export->callback();
+
+		// The dir should remain unchanged (export() was not called).
+		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run for non-admin users' );
+
+		// Clean up.
+		unset( $_GET['type'], $_GET['_wpnonce'] );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Test that callback() does not export with missing nonce
+	 */
+	function test_callback_blocks_missing_nonce() {
+		global $jekyll_export;
+
+		// Set up as admin.
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		// Set up screen and GET params but without nonce.
+		$_GET['type'] = 'jekyll';
+		set_current_screen( 'export' );
+
+		$dir_before = $jekyll_export->dir;
+
+		// callback() should return early without calling export().
+		$jekyll_export->callback();
+
+		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run without a valid nonce' );
+
+		// Clean up.
+		unset( $_GET['type'] );
+		wp_set_current_user( 0 );
 	}
 }

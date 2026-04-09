@@ -4,16 +4,13 @@
 
 	<rule ref="WordPress-Core">
 		<exclude name="WordPress.PHP.NoSilencedErrors.Discouraged" />
-		<exclude name="WordPress.CSRF.NonceVerification.NoNonceVerification" />
 		<exclude name="WordPress.Security.NonceVerification.Recommended" />
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_read_readfile" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents" />
-		<exclude name="WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition" />
 		<exclude name="WordPress.WP.GlobalVariablesOverride.Prohibited" />
-		<exclude name="Squiz.Scope.MethodScope.Missing" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_readfile" />
 		<exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames.arrayFound" />
