@@ -2,11 +2,41 @@
 
 set -e
 
+POT_FILE="languages/jekyll-export.pot"
 VERSION=$(grep -i "Stable tag:" docs/header.md | awk -F' ' '{print $NF}' | tr -d '\r')
+
+# Save the existing POT file for comparison
+if [ -f "$POT_FILE" ]; then
+  cp "$POT_FILE" "$POT_FILE.old"
+fi
 
 wp-pot \
   --domain jekyll-export \
-  --dest-file languages/jekyll-export.pot \
+  --dest-file "$POT_FILE" \
   --src "jekyll-exporter.php" \
   --package "WordPress Jekyll Export $VERSION" --relative-to "." \
   --comment-keyword "translators:"
+
+# Strip date-related lines for comparison
+strip_dates() {
+  grep -v -e "^\"POT-Creation-Date:" -e "^# Copyright (C)" "$1"
+}
+
+# If only date-related lines changed, restore the old file
+if [ -f "$POT_FILE.old" ]; then
+  POT_FILE_STRIPPED=$(mktemp)
+  POT_FILE_OLD_STRIPPED=$(mktemp)
+  trap 'rm -f "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"' EXIT HUP INT TERM
+
+  strip_dates "$POT_FILE" > "$POT_FILE_STRIPPED"
+  strip_dates "$POT_FILE.old" > "$POT_FILE_OLD_STRIPPED"
+
+  if cmp -s "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"; then
+    mv "$POT_FILE.old" "$POT_FILE"
+  else
+    rm "$POT_FILE.old"
+  fi
+
+  rm -f "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"
+  trap - EXIT HUP INT TERM
+fi
