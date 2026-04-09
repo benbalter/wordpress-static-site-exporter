@@ -16,8 +16,8 @@
 	</logging>
 	<filter>
 	  <whitelist addUncoveredFilesFromWhitelist="true" processUncoveredFilesFromWhitelist="false">
-	    <directory suffix=".php">./includes</directory>
-	    <file>./jekyll-export.php</file>
+	    <directory suffix=".php">./lib</directory>
+	    <file>./jekyll-exporter.php</file>
 	  </whitelist>
 	</filter>
 </phpunit>

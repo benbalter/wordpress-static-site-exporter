@@ -4,7 +4,7 @@
  *
  * @package    JekyllExporter
  * @author     Ben Balter <ben@balter.com>
- * @copyright  2013-2021 Ben Balter
+ * @copyright  2013-2025 Ben Balter
  * @license    GPLv3
  * @link       https://github.com/benbalter/wordpress-to-jekyll-exporter/
  */

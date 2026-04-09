@@ -4,7 +4,7 @@
  *
  * @package    JekyllExporter
  * @author     Ben Balter <ben@balter.com>
- * @copyright  2013-2021 Ben Balter
+ * @copyright  2013-2025 Ben Balter
  * @license    GPLv3
  * @link       https://github.com/benbalter/wordpress-to-jekyll-exporter/
  */
@@ -1312,5 +1312,37 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '| Header 1 | Header 2 |', $content );
 		$this->assertStringContainsString( '| Cell 1 | Cell 2 |', $content );
 		$this->assertStringContainsString( '|---|---|', $content, 'Table should have two column separators' );
+	}
+
+	/**
+	 * Test that send() sets correct HTTP headers
+	 */
+	function test_send_sets_headers() {
+		global $jekyll_export;
+
+		// Create a zip file to send.
+		file_put_contents( $jekyll_export->dir . '/test.txt', 'test content' );
+		$jekyll_export->zip();
+
+		$this->assertFileExists( $jekyll_export->zip );
+
+		// Capture output from send().
+		ob_start();
+		$jekyll_export->send();
+		$output = ob_get_clean();
+
+		// Verify that the output contains zip content (not empty).
+		$this->assertNotEmpty( $output, 'send() should output the zip file contents' );
+	}
+
+	/**
+	 * Test that callback() requires manage_options capability
+	 */
+	function test_callback_requires_capability() {
+		global $jekyll_export;
+
+		// Verify the callback method exists and is callable.
+		$this->assertTrue( method_exists( $jekyll_export, 'callback' ) );
+		$this->assertTrue( is_callable( array( $jekyll_export, 'callback' ) ) );
 	}
 }

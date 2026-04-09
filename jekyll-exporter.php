@@ -4,7 +4,7 @@
  *
  * @package    JekyllExporter
  * @author     Ben Balter <ben@balter.com>
- * @copyright  2013-2022 Ben Balter
+ * @copyright  2013-2025 Ben Balter
  * @license    GPLv3
  * @link       https://github.com/benbalter/wordpress-to-jekyll-exporter/
  *
@@ -35,8 +35,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-if ( version_compare( PHP_VERSION, '5.3.0', '<' ) ) {
-	wp_die( 'Jekyll Export requires PHP 5.3 or later' );
+if ( version_compare( PHP_VERSION, '7.2.5', '<' ) ) {
+	wp_die( 'Jekyll Export requires PHP 7.2.5 or later' );
 }
 
 require_once __DIR__ . '/lib/cli.php';
@@ -60,14 +60,14 @@ class Jekyll_Export {
 	/**
 	 * Strings to strip from option keys on export
 	 *
-	 * @var $rename_options
+	 * @var array
 	 */
 	public $rename_options = array( 'site', 'blog' );
 
 	/**
 	 * Array of wp_options value to convert to _config.yml
 	 *
-	 * @var $options
+	 * @var array
 	 */
 	public $options = array(
 		'name',
@@ -76,17 +76,31 @@ class Jekyll_Export {
 	);
 
 	/**
+	 * Path to the temporary export directory
+	 *
+	 * @var string
+	 */
+	public $dir;
+
+	/**
+	 * Path to the temporary zip file
+	 *
+	 * @var string
+	 */
+	public $zip;
+
+	/**
 	 * Hook into WP Core
 	 */
-	function __construct() {
-		add_action( 'admin_menu', array( &$this, 'register_menu' ) );
-		add_action( 'current_screen', array( &$this, 'callback' ) );
+	public function __construct() {
+		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'current_screen', array( $this, 'callback' ) );
 	}
 
 	/**
 	 * Listens for page callback, intercepts and runs export
 	 */
-	function callback() {
+	public function callback() {
 		if ( get_current_screen()->id !== 'export' ) {
 			return;
 		}
@@ -99,6 +113,10 @@ class Jekyll_Export {
 			return;
 		}
 
+		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'jekyll_export' ) ) {
+			return;
+		}
+
 		$this->export();
 		exit();
 	}
@@ -107,8 +125,8 @@ class Jekyll_Export {
 	/**
 	 * Add menu option to tools list
 	 */
-	function register_menu() {
-		add_management_page( __( 'Export to Jekyll', 'jekyll-exporter' ), __( 'Export to Jekyll', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll' );
+	public function register_menu() {
+		add_management_page( __( 'Export to Jekyll', 'jekyll-exporter' ), __( 'Export to Jekyll', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll&_wpnonce=' . wp_create_nonce( 'jekyll_export' ) );
 	}
 
 
@@ -116,7 +134,7 @@ class Jekyll_Export {
 	 * Get an array of all post and page IDs
 	 * Note: We don't use core's get_posts as it doesn't scale as well on large sites
 	 */
-	function get_posts() {
+	public function get_posts() {
 		global $wpdb;
 
 		$posts = wp_cache_get( 'jekyll_export_posts' );
@@ -178,7 +196,7 @@ class Jekyll_Export {
 	 *
 	 * @param Post $post the post.
 	 */
-	function convert_meta( $post ) {
+	public function convert_meta( $post ) {
 
 		// Cache user data to avoid repeated database queries.
 		static $user_cache = array();
@@ -233,7 +251,7 @@ class Jekyll_Export {
 	 * @param Post $post the Post object.
 	 * @return Array an array of converted terms
 	 */
-	function convert_terms( $post ) {
+	public function convert_terms( $post ) {
 
 		$output = array();
 
@@ -270,7 +288,7 @@ class Jekyll_Export {
 	 * @param String $content the content to localize.
 	 * @return String the content with localized URLs
 	 */
-	function localize_urls( $content ) {
+	public function localize_urls( $content ) {
 		// Get the site URL with both http and https versions.
 		$site_url_http  = set_url_scheme( get_site_url(), 'http' );
 		$site_url_https = set_url_scheme( get_site_url(), 'https' );
@@ -296,7 +314,7 @@ class Jekyll_Export {
 	 * @param Post $post the post to Convert.
 	 * @return String the converted post content
 	 */
-	function convert_content( $post ) {
+	public function convert_content( $post ) {
 
 		// check if jetpack markdown is available.
 		if ( class_exists( 'WPCom_Markdown' ) ) {
@@ -341,7 +359,7 @@ class Jekyll_Export {
 	/**
 	 * Loop through and convert all posts to MD files with YAML headers
 	 */
-	function convert_posts() {
+	public function convert_posts() {
 		global $post;
 
 		foreach ( $this->get_posts() as $post_id ) {
@@ -364,17 +382,17 @@ class Jekyll_Export {
 	/**
 	 * Callback to modify the filesystem filter
 	 */
-	function filesystem_method_filter() {
+	public function filesystem_method_filter() {
 		return 'direct';
 	}
 
 	/**
 	 * Initialize the temporary directory
 	 */
-	function init_temp_dir() {
+	public function init_temp_dir() {
 		global $wp_filesystem;
 
-		add_filter( 'filesystem_method', array( &$this, 'filesystem_method_filter' ) );
+		add_filter( 'filesystem_method', array( $this, 'filesystem_method_filter' ) );
 
 		WP_Filesystem();
 
@@ -402,7 +420,7 @@ class Jekyll_Export {
 	/**
 	 * Main function, bootstraps, converts, and cleans up
 	 */
-	function export() {
+	public function export() {
 		// Disable PHP time limit to prevent timeout during large exports.
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Silenced because set_time_limit may be disabled on some hosts.
 		@set_time_limit( 0 );
@@ -422,32 +440,39 @@ class Jekyll_Export {
 	/**
 	 * Convert options table to _config.yml file
 	 */
-	function convert_options() {
+	public function convert_options() {
 		global $wp_filesystem;
 
-		$options = wp_load_alloptions();
-		foreach ( $options as $key => &$option ) {
+		$options = array();
 
-			if ( substr( $key, 0, 1 ) === '_' ) {
-				unset( $options[ $key ] );
+		// Build the full list of option keys to look up, including prefixed variants.
+		$option_keys = $this->options;
+		foreach ( $this->rename_options as $prefix ) {
+			foreach ( $this->options as $opt ) {
+				$option_keys[] = $prefix . $opt;
 			}
-
-			// Strip site and blog from key names, since it will become site when in Jekyll.
-			foreach ( $this->rename_options as $rename ) {
-
-				$len = strlen( $rename );
-				if ( substr( $key, 0, $len ) !== $rename ) {
-					continue;
-				}
-
-				$this->rename_key( $options, $key, substr( $key, $len ) );
-			}
-
-			$option = maybe_unserialize( $option );
 		}
 
-		foreach ( $options as $key => $value ) {
+		// Query only the needed options instead of loading all options.
+		foreach ( array_unique( $option_keys ) as $key ) {
+			$value = get_option( $key );
+			if ( false !== $value ) {
+				$options[ $key ] = maybe_unserialize( $value );
+			}
+		}
 
+		// Strip site and blog prefixes from key names.
+		foreach ( array_keys( $options ) as $key ) {
+			foreach ( $this->rename_options as $rename ) {
+				$len = strlen( $rename );
+				if ( substr( $key, 0, $len ) === $rename ) {
+					$this->rename_key( $options, $key, substr( $key, $len ) );
+				}
+			}
+		}
+
+		// Keep only the configured option keys.
+		foreach ( array_keys( $options ) as $key ) {
 			if ( ! in_array( $key, $this->options, true ) ) {
 				unset( $options[ $key ] );
 			}
@@ -465,7 +490,7 @@ class Jekyll_Export {
 	 * @param String $output the post content.
 	 * @param Post   $post the Post object.
 	 */
-	function write( $output, $post ) {
+	public function write( $output, $post ) {
 
 		global $wp_filesystem;
 
@@ -487,17 +512,17 @@ class Jekyll_Export {
 	 * @param String $source the source directory to zip.
 	 * @param String $destination the path to output the zip.
 	 */
-	function zip_folder( $source, $destination ) {
+	public function zip_folder( $source, $destination ) {
 
 		if ( ! file_exists( $source ) ) {
-			die( 'file does not exist: ' . esc_html( $source ) );
+			wp_die( 'file does not exist: ' . esc_html( $source ) );
 		}
 
 		$source = realpath( $source );
 
 		$zip = new ZipArchive();
 		if ( ! $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE ) ) {
-			die( 'Cannot open zip archive: ' . esc_html( $destination ) );
+			wp_die( 'Cannot open zip archive: ' . esc_html( $destination ) );
 		}
 
 		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source ), RecursiveIteratorIterator::SELF_FIRST );
@@ -521,14 +546,14 @@ class Jekyll_Export {
 	/**
 	 * Zip temp dir
 	 */
-	function zip() {
+	public function zip() {
 		$this->zip_folder( $this->dir, $this->zip );
 	}
 
 	/**
 	 * Send headers and zip file to user
 	 */
-	function send() {
+	public function send() {
 		// Send headers.
 		@header( 'Content-Type: application/zip' );
 		@header( 'Content-Disposition: attachment; filename=jekyll-export.zip' );
@@ -543,7 +568,7 @@ class Jekyll_Export {
 	/**
 	 * Clear temp files
 	 */
-	function cleanup() {
+	public function cleanup() {
 		global $wp_filesystem;
 
 		$wp_filesystem->delete( $this->dir, true );
@@ -559,7 +584,7 @@ class Jekyll_Export {
 	 * @param String $to the resulting key.
 	 * @return The New Array
 	 */
-	function rename_key( &$array, $from, $to ) {
+	public function rename_key( &$array, $from, $to ) {
 
 		$keys  = array_keys( $array );
 		$index = array_search( $from, $keys, true );
@@ -575,7 +600,7 @@ class Jekyll_Export {
 	/**
 	 * Convert uploads to static files in the resulting site
 	 */
-	function convert_uploads() {
+	public function convert_uploads() {
 		$upload_dir = wp_upload_dir();
 		$source     = $upload_dir['basedir'];
 
@@ -600,7 +625,7 @@ class Jekyll_Export {
 	 * @param       string $dest      Destination path.
 	 * @return      bool     Returns TRUE on success, false on failure
 	 */
-	function copy_recursive( $source, $dest ) {
+	public function copy_recursive( $source, $dest ) {
 
 		global $wp_filesystem;
 
