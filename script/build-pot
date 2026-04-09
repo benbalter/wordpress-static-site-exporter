@@ -17,11 +17,13 @@ wp-pot \
   --package "WordPress Jekyll Export $VERSION" --relative-to "." \
   --comment-keyword "translators:"
 
+# Strip date-related lines for comparison
+strip_dates() {
+  grep -v -e "^\"POT-Creation-Date:" -e "^# Copyright (C)" "$1"
+}
+
 # If only date-related lines changed, restore the old file
 if [ -f "$POT_FILE.old" ]; then
-  strip_dates() {
-    grep -v -e "^\"POT-Creation-Date:" -e "^# Copyright (C)" "$1"
-  }
   if [ "$(strip_dates "$POT_FILE")" = "$(strip_dates "$POT_FILE.old")" ]; then
     mv "$POT_FILE.old" "$POT_FILE"
   else
