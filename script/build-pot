@@ -24,9 +24,19 @@ strip_dates() {
 
 # If only date-related lines changed, restore the old file
 if [ -f "$POT_FILE.old" ]; then
-  if [ "$(strip_dates "$POT_FILE")" = "$(strip_dates "$POT_FILE.old")" ]; then
+  POT_FILE_STRIPPED=$(mktemp)
+  POT_FILE_OLD_STRIPPED=$(mktemp)
+  trap 'rm -f "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"' EXIT HUP INT TERM
+
+  strip_dates "$POT_FILE" > "$POT_FILE_STRIPPED"
+  strip_dates "$POT_FILE.old" > "$POT_FILE_OLD_STRIPPED"
+
+  if cmp -s "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"; then
     mv "$POT_FILE.old" "$POT_FILE"
   else
     rm "$POT_FILE.old"
   fi
+
+  rm -f "$POT_FILE_STRIPPED" "$POT_FILE_OLD_STRIPPED"
+  trap - EXIT HUP INT TERM
 fi
