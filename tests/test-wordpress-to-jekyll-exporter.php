@@ -1319,8 +1319,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	 *
 	 * Note: header() calls cannot be verified in PHPUnit because output has
 	 * already started. We verify the output content and size match the zip file.
-	 *
-	 * @runInSeparateProcess
 	 */
 	function test_send_outputs_zip_content() {
 		global $jekyll_export;
