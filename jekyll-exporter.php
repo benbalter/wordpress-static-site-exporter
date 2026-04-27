@@ -387,6 +387,21 @@ class Jekyll_Export {
 	}
 
 	/**
+	 * Return the base temporary directory appropriate for the current environment.
+	 *
+	 * On Azure Web Apps the standard temp dir behaves unexpectedly, so %HOME%\temp is
+	 * used instead.  Both init_temp_dir() and validate_environment() call this so they
+	 * always agree on which directory to use.
+	 *
+	 * @return string Temp directory path (may or may not have a trailing slash).
+	 */
+	protected function get_export_temp_dir() {
+		// When on Azure Web App use %HOME%\temp\ to avoid weird default temp folder behavior.
+		// For more information see https://github.com/projectkudu/kudu/wiki/Understanding-the-Azure-App-Service-file-system.
+		return ( getenv( 'WEBSITE_SITE_NAME' ) !== false ) ? ( getenv( 'HOME' ) . DIRECTORY_SEPARATOR . 'temp' ) : get_temp_dir();
+	}
+
+	/**
 	 * Initialize the temporary directory
 	 */
 	public function init_temp_dir() {
@@ -396,9 +411,7 @@ class Jekyll_Export {
 
 		WP_Filesystem();
 
-		// When on Azure Web App use %HOME%\temp\ to avoid weird default temp folder behavior.
-		// For more information see https://github.com/projectkudu/kudu/wiki/Understanding-the-Azure-App-Service-file-system.
-		$temp_dir = ( getenv( 'WEBSITE_SITE_NAME' ) !== false ) ? ( getenv( 'HOME' ) . DIRECTORY_SEPARATOR . 'temp' ) : get_temp_dir();
+		$temp_dir = $this->get_export_temp_dir();
 		$wp_filesystem->mkdir( $temp_dir );
 
 		// realpath() returns false if the directory doesn't exist, so we need to check.
@@ -418,22 +431,84 @@ class Jekyll_Export {
 	}
 
 	/**
+	 * Validate that the server environment meets the requirements for export.
+	 *
+	 * @return true|WP_Error True if valid, WP_Error with details if not.
+	 */
+	public function validate_environment() {
+		$errors = new WP_Error();
+
+		if ( ! class_exists( 'ZipArchive' ) ) {
+			$errors->add(
+				'missing_zip',
+				__( 'The ZipArchive PHP extension is required for export but is not installed. Please contact your hosting provider to enable the zip extension.', 'jekyll-exporter' )
+			);
+		}
+
+		$temp_dir = $this->get_export_temp_dir();
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Checking temp dir writability before WP_Filesystem is initialized.
+		if ( ! is_writable( $temp_dir ) ) {
+			$errors->add(
+				'temp_not_writable',
+				/* translators: %s: temporary directory path */
+				sprintf( __( 'The temporary directory (%s) is not writable. Please check file permissions.', 'jekyll-exporter' ), esc_html( $temp_dir ) )
+			);
+		}
+
+		return $errors->has_errors() ? $errors : true;
+	}
+
+	/**
 	 * Main function, bootstraps, converts, and cleans up
 	 */
 	public function export() {
+		$validation = $this->validate_environment();
+		if ( is_wp_error( $validation ) ) {
+			wp_die(
+				wp_kses_post( implode( '<br>', $validation->get_error_messages() ) ),
+				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				array( 'back_link' => true )
+			);
+		}
+
 		// Disable PHP time limit to prevent timeout during large exports.
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Silenced because set_time_limit may be disabled on some hosts.
 		@set_time_limit( 0 );
-		do_action( 'jekyll_export' );
-		ob_start();
-		$this->init_temp_dir();
-		$this->convert_options();
-		$this->convert_posts();
-		$this->convert_uploads();
-		$this->zip();
-		ob_end_clean();
-		$this->send();
-		$this->cleanup();
+
+		// Attempt to increase memory limit for large exports.
+		wp_raise_memory_limit( 'jekyll_export' );
+
+		try {
+			$ob_level_before = ob_get_level();
+			do_action( 'jekyll_export' );
+			ob_start();
+			$this->init_temp_dir();
+			$this->convert_options();
+			$this->convert_posts();
+			$this->convert_uploads();
+			$this->zip();
+			ob_end_clean();
+			$this->send();
+			$this->cleanup();
+		} catch ( \Throwable $e ) {
+			// Clean up only output buffers that export() started, leaving any
+			// pre-existing WordPress/admin buffers intact.
+			while ( ob_get_level() > $ob_level_before ) {
+				ob_end_clean();
+			}
+
+			// Attempt cleanup of any partial temp files.
+			if ( ! empty( $this->dir ) || ! empty( $this->zip ) ) {
+				$this->cleanup();
+			}
+
+			wp_die(
+				/* translators: %s: error message from the exception */
+				wp_kses_post( sprintf( __( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $e->getMessage() ) ) ),
+				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				array( 'back_link' => true )
+			);
+		}
 	}
 
 
