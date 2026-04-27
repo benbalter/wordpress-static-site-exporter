@@ -3,7 +3,7 @@
         'name' => 'benbalter/wordpress-to-jekyll-exporter',
         'pretty_version' => 'dev-copilot/fix-internal-server-error',
         'version' => 'dev-copilot/fix-internal-server-error',
-        'reference' => 'fe6b5504ef2aa5b5ede475425b2eb736383dcb03',
+        'reference' => '91b6da5d0a7accbfe84b35bb8108264c6aa6e3f4',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'benbalter/wordpress-to-jekyll-exporter' => array(
             'pretty_version' => 'dev-copilot/fix-internal-server-error',
             'version' => 'dev-copilot/fix-internal-server-error',
-            'reference' => 'fe6b5504ef2aa5b5ede475425b2eb736383dcb03',
+            'reference' => '91b6da5d0a7accbfe84b35bb8108264c6aa6e3f4',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -24,6 +24,14 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	private static $author_id = 0;
 
 	/**
+	 * Callback registered during test_export_catches_exception_during_convert
+	 * so it can be removed in tear_down().
+	 *
+	 * @var callable|null
+	 */
+	private $exception_filter_callback = null;
+
+	/**
 	 * Setup the test class
 	 */
 	static function set_up_before_class() {
@@ -52,6 +60,11 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	 * Tear down each test
 	 */
 	function tear_down() {
+		if ( $this->exception_filter_callback !== null ) {
+			remove_filter( 'jekyll_export_post_meta', $this->exception_filter_callback );
+			$this->exception_filter_callback = null;
+		}
+
 		global $jekyll_export;
 		if ( isset( $jekyll_export->dir ) && file_exists( $jekyll_export->dir ) ) {
 			$jekyll_export->cleanup();
@@ -470,12 +483,10 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		global $jekyll_export;
 
 		// Add a filter that throws an exception during post conversion.
-		add_filter(
-			'jekyll_export_post_meta',
-			function () {
-				throw new \Exception( 'Test exception during export' );
-			}
-		);
+		$this->exception_filter_callback = function () {
+			throw new \Exception( 'Test exception during export' );
+		};
+		add_filter( 'jekyll_export_post_meta', $this->exception_filter_callback );
 
 		// Create a post so convert_posts processes something.
 		wp_insert_post(
