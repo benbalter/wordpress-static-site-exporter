@@ -452,4 +452,44 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	private function is_windows() {
 		return strtoupper( substr( PHP_OS, 0, 3 ) ) === 'WIN';
 	}
+
+	/**
+	 * Test that validate_environment returns true when all requirements are met
+	 */
+	function test_validate_environment_passes() {
+		global $jekyll_export;
+
+		$result = $jekyll_export->validate_environment();
+		$this->assertTrue( $result );
+	}
+
+	/**
+	 * Test that export uses try-catch and completes without fatal error
+	 */
+	function test_export_catches_exception_during_convert() {
+		global $jekyll_export;
+
+		// Add a filter that throws an exception during post conversion.
+		add_filter(
+			'jekyll_export_post_meta',
+			function () {
+				throw new \Exception( 'Test exception during export' );
+			}
+		);
+
+		// Create a post so convert_posts processes something.
+		wp_insert_post(
+			array(
+				'post_title'   => 'Exception Test',
+				'post_content' => 'Content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+		wp_cache_delete( 'jekyll_export_posts' );
+
+		// export() should call wp_die with the exception message instead of crashing.
+		$this->expectException( 'WPDieException' );
+		$jekyll_export->export();
+	}
 }
