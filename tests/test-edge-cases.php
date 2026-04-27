@@ -483,10 +483,10 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		global $jekyll_export;
 
 		// Add a filter that throws an exception during post conversion.
-		$this->exception_filter_callback = function () {
+		$this->exception_filter_callback = function ( $meta, $post ) {
 			throw new \Exception( 'Test exception during export' );
 		};
-		add_filter( 'jekyll_export_post_meta', $this->exception_filter_callback );
+		add_filter( 'jekyll_export_post_meta', $this->exception_filter_callback, 10, 2 );
 
 		// Create a post so convert_posts processes something.
 		wp_insert_post(

@@ -387,6 +387,21 @@ class Jekyll_Export {
 	}
 
 	/**
+	 * Return the base temporary directory appropriate for the current environment.
+	 *
+	 * On Azure Web Apps the standard temp dir behaves unexpectedly, so %HOME%\temp is
+	 * used instead.  Both init_temp_dir() and validate_environment() call this so they
+	 * always agree on which directory to use.
+	 *
+	 * @return string Temp directory path (may or may not have a trailing slash).
+	 */
+	protected function get_export_temp_dir() {
+		// When on Azure Web App use %HOME%\temp\ to avoid weird default temp folder behavior.
+		// For more information see https://github.com/projectkudu/kudu/wiki/Understanding-the-Azure-App-Service-file-system.
+		return ( getenv( 'WEBSITE_SITE_NAME' ) !== false ) ? ( getenv( 'HOME' ) . DIRECTORY_SEPARATOR . 'temp' ) : get_temp_dir();
+	}
+
+	/**
 	 * Initialize the temporary directory
 	 */
 	public function init_temp_dir() {
@@ -396,9 +411,7 @@ class Jekyll_Export {
 
 		WP_Filesystem();
 
-		// When on Azure Web App use %HOME%\temp\ to avoid weird default temp folder behavior.
-		// For more information see https://github.com/projectkudu/kudu/wiki/Understanding-the-Azure-App-Service-file-system.
-		$temp_dir = ( getenv( 'WEBSITE_SITE_NAME' ) !== false ) ? ( getenv( 'HOME' ) . DIRECTORY_SEPARATOR . 'temp' ) : get_temp_dir();
+		$temp_dir = $this->get_export_temp_dir();
 		$wp_filesystem->mkdir( $temp_dir );
 
 		// realpath() returns false if the directory doesn't exist, so we need to check.
@@ -432,7 +445,7 @@ class Jekyll_Export {
 			);
 		}
 
-		$temp_dir = get_temp_dir();
+		$temp_dir = $this->get_export_temp_dir();
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Checking temp dir writability before WP_Filesystem is initialized.
 		if ( ! is_writable( $temp_dir ) ) {
 			$errors->add(
@@ -466,6 +479,7 @@ class Jekyll_Export {
 		wp_raise_memory_limit( 'jekyll_export' );
 
 		try {
+			$ob_level_before = ob_get_level();
 			do_action( 'jekyll_export' );
 			ob_start();
 			$this->init_temp_dir();
@@ -476,9 +490,10 @@ class Jekyll_Export {
 			ob_end_clean();
 			$this->send();
 			$this->cleanup();
-		} catch ( \Exception $e ) {
-			// Clean up the output buffer if it's still active.
-			if ( ob_get_level() > 0 ) {
+		} catch ( \Throwable $e ) {
+			// Clean up only output buffers that export() started, leaving any
+			// pre-existing WordPress/admin buffers intact.
+			while ( ob_get_level() > $ob_level_before ) {
 				ob_end_clean();
 			}
 
