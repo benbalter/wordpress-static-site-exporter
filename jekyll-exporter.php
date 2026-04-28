@@ -187,6 +187,8 @@ class Jekyll_Export {
 			$posts = $wpdb->get_col( $wpdb->prepare( $query, ...$post_types ) );
 		}
 
+		$posts = array_map( 'intval', $posts );
+
 		wp_cache_set( 'jekyll_export_posts', $posts );
 		return $posts;
 	}
