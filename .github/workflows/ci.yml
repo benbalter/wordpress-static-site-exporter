@@ -127,7 +127,7 @@ jobs:
 
       - name: Check for uncommitted changes to vendor autoload files
         run: |
-          if ! git diff --exit-code vendor/composer/; then
+          if ! git diff --exit-code vendor/composer/autoload_files.php vendor/composer/autoload_psr4.php vendor/composer/autoload_static.php vendor/composer/autoload_classmap.php vendor/composer/autoload_namespaces.php vendor/composer/autoload_real.php; then
             echo "::error::Vendor autoload files are out of date. Run 'script/vendor' and commit the result."
             exit 1
           fi
