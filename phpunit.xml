@@ -5,12 +5,12 @@
 	>
 	<testsuites>
 		<testsuite name="WPJE Tests">
-			<directory prefix="test-" suffix=".php">./tests/</directory>
+			<file>./tests/test-cli.php</file>
+			<file>./tests/test-edge-cases.php</file>
+			<file>./tests/test-integration.php</file>
+			<file>./tests/test-wordpress-to-jekyll-exporter.php</file>
 		</testsuite>
 	</testsuites>
-	<logging>
-		<clover outputFile="coverage.xml"/>
-	</logging>
 	<source>
 		<include>
 			<directory suffix=".php">./lib</directory>
