@@ -107,3 +107,27 @@ jobs:
       
       - name: phpcs
         run: script/cibuild-phpcs
+
+  vendor-autoload:
+    name: Verify vendor autoload files
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php_version: [8.3]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php_version }}
+
+      - name: Regenerate vendor with --no-dev
+        run: script/vendor
+
+      - name: Check for uncommitted changes to vendor autoload files
+        run: |
+          if ! git diff --exit-code vendor/composer/; then
+            echo "::error::Vendor autoload files are out of date. Run 'script/vendor' and commit the result."
+            exit 1
+          fi

@@ -155,6 +155,16 @@ script/fmt
 3. Test thoroughly, especially with different PHP and WordPress versions
 4. Update minimum PHP version in plugin header if needed
 
+### Vendor Management
+
+This plugin ships production Composer dependencies (in `vendor/`) as part of the repository so that end users don't need to run `composer install`. The `.gitignore` selectively includes only production packages (`league/html-to-markdown`, `symfony/*`) and the Composer autoloader.
+
+**Critical**: The committed `vendor/composer/autoload_*.php` files must be generated with `--no-dev` so they only reference shipped packages. If they are generated with dev dependencies, the plugin will fatal error on load for end users.
+
+- **Always run `script/vendor`** after changing `composer.json` or updating dependencies. This script runs `composer install --no-dev` to regenerate the autoload files correctly.
+- **Never run `composer install` or `composer update` without `--no-dev`** when preparing vendor files for commit.
+- CI will verify that committed vendor autoload files match the output of `script/vendor`.
+
 ## CI/CD Pipeline
 
 The project uses GitHub Actions with the following jobs:
@@ -202,3 +212,4 @@ script/setup
 4. Update tests to cover new functionality
 5. Update documentation if making user-facing changes
 6. Do not modify `readme.txt` directly - edit files in `docs/` and run `script/build-readme`
+7. If changing `composer.json` or dependencies, run `script/vendor` and commit the updated `vendor/` files
