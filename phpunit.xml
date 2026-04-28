@@ -5,10 +5,7 @@
 	>
 	<testsuites>
 		<testsuite name="WPJE Tests">
-			<file>./tests/test-cli.php</file>
-			<file>./tests/test-edge-cases.php</file>
-			<file>./tests/test-integration.php</file>
-			<file>./tests/test-wordpress-to-jekyll-exporter.php</file>
+			<directory suffix="Test.php">./tests/</directory>
 		</testsuite>
 	</testsuites>
 	<source>
