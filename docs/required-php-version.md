@@ -1,6 +1,6 @@
 ## Minimum required PHP version
 
-Many shared hosts may use an outdated version of PHP by default. **Static Site Exporter requires PHP 5.6 or greater.**
+Many shared hosts may use an outdated version of PHP by default. **Static Site Exporter requires PHP 8.2 or greater.**
 
 If you get an error message that looks like `unexpected T_STRING`, `unexpected '['` or `expecting T_CONSTANT_ENCAPSED_STRING`, you need to update your PHP version. In a shared hosting environment, you should be able to change the version of PHP used by simply toggling the setting in the host's control panel.
 

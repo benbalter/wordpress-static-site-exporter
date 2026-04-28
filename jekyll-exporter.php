@@ -35,8 +35,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-if ( version_compare( PHP_VERSION, '7.2.5', '<' ) ) {
-	wp_die( 'Jekyll Export requires PHP 7.2.5 or later' );
+if ( version_compare( PHP_VERSION, '8.2', '<' ) ) {
+	wp_die( 'Jekyll Export requires PHP 8.2 or later' );
 }
 
 require_once __DIR__ . '/lib/cli.php';

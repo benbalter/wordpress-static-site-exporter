@@ -37,7 +37,7 @@ Feature requests are welcome. But take a moment to find out whether your idea fi
 
 ## Minimum PHP version
 
-Many shared hosts may use an outdated version of PHP by default. Static Site Exporter requires PHP 5.6 or greater.
+Many shared hosts may use an outdated version of PHP by default. Static Site Exporter requires PHP 8.2 or greater.
 
 See [this document](required-php-version.md) for example error messages, instructions on how to determine your PHP version, and how to update to a newer version of PHP.
 

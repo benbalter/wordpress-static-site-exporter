@@ -3,7 +3,7 @@ Contributors: benbalter
 Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 4.4
 Tested up to: 6.9
-Requires PHP: 7.2
+Requires PHP: 8.2
 Stable tag: 3.1.3
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -677,7 +677,7 @@ Include in your report:
 
 == Minimum required PHP version ==
 
-Many shared hosts may use an outdated version of PHP by default. **Static Site Exporter requires PHP 5.6 or greater.**
+Many shared hosts may use an outdated version of PHP by default. **Static Site Exporter requires PHP 8.2 or greater.**
 
 If you get an error message that looks like `unexpected T_STRING`, `unexpected '['` or `expecting T_CONSTANT_ENCAPSED_STRING`, you need to update your PHP version. In a shared hosting environment, you should be able to change the version of PHP used by simply toggling the setting in the host's control panel.
 

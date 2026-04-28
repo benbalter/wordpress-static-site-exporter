@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'benbalter/wordpress-to-jekyll-exporter',
-        'pretty_version' => 'dev-copilot/fix-upgrading-to-3-1-2-issue',
-        'version' => 'dev-copilot/fix-upgrading-to-3-1-2-issue',
-        'reference' => '9868baa9a5fd1c3c3fa5f75ca2c8449f5c066a00',
+        'pretty_version' => 'dev-master',
+        'version' => 'dev-master',
+        'reference' => '6afca8273c1a7de5df8042736fe79032b1e2699a',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'benbalter/wordpress-to-jekyll-exporter' => array(
-            'pretty_version' => 'dev-copilot/fix-upgrading-to-3-1-2-issue',
-            'version' => 'dev-copilot/fix-upgrading-to-3-1-2-issue',
-            'reference' => '9868baa9a5fd1c3c3fa5f75ca2c8449f5c066a00',
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => '6afca8273c1a7de5df8042736fe79032b1e2699a',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'symfony/yaml' => array(
-            'pretty_version' => 'v5.4.45',
-            'version' => '5.4.45.0',
-            'reference' => 'a454d47278cc16a5db371fe73ae66a78a633371e',
+            'pretty_version' => 'v7.4.8',
+            'version' => '7.4.8.0',
+            'reference' => 'c58fdf7b3d6c2995368264c49e4e8b05bcff2883',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/yaml',
             'aliases' => array(),
