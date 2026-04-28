@@ -52,7 +52,7 @@ jobs:
           ${{ runner.os }}-php-${{ matrix.php_version }}-
 
     - name: Install composer dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      run: rm -rf vendor && composer install --prefer-dist --no-progress
 
     - name: Install SVN
       run: sudo apt-get install -y subversion
@@ -103,7 +103,7 @@ jobs:
             ${{ runner.os }}-php-${{ matrix.php_version }}-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: rm -rf vendor && composer install --prefer-dist --no-progress
       
       - name: phpcs
         run: script/cibuild-phpcs
@@ -127,7 +127,7 @@ jobs:
             ${{ runner.os }}-php-8.4-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: rm -rf vendor && composer install --prefer-dist --no-progress
 
       - name: PHPStan
         run: bin/phpstan analyse
