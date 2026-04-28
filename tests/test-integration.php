@@ -33,7 +33,7 @@ class IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Setup the test class
 	 */
-	protected static function set_up_before_class() {
+	public static function set_up_before_class() {
 		parent::set_up_before_class();
 
 		self::$author_id = wp_insert_user(
@@ -64,7 +64,7 @@ class IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Setup each test
 	 */
-	protected function set_up() {
+	public function set_up() {
 		parent::set_up();
 
 		global $jekyll_export;
@@ -74,7 +74,7 @@ class IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down each test
 	 */
-	protected function tear_down() {
+	public function tear_down() {
 		global $jekyll_export;
 		if ( isset( $jekyll_export->dir ) && file_exists( $jekyll_export->dir ) ) {
 			$jekyll_export->cleanup();
