@@ -8,5 +8,5 @@ parameters:
         - lib/
     excludePaths:
         - vendor/
-        - node_modules/
+        - node_modules/ (?)
         - tests/
