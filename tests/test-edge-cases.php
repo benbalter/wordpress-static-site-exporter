@@ -34,7 +34,7 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	/**
 	 * Setup the test class
 	 */
-	static function set_up_before_class() {
+	protected static function set_up_before_class() {
 		parent::set_up_before_class();
 
 		self::$author_id = wp_insert_user(
@@ -49,7 +49,7 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	/**
 	 * Setup each test
 	 */
-	function set_up() {
+	protected function set_up() {
 		parent::set_up();
 
 		global $jekyll_export;
@@ -59,7 +59,7 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	/**
 	 * Tear down each test
 	 */
-	function tear_down() {
+	protected function tear_down() {
 		if ( $this->exception_filter_callback !== null ) {
 			remove_filter( 'jekyll_export_post_meta', $this->exception_filter_callback );
 			$this->exception_filter_callback = null;

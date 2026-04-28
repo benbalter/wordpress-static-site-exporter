@@ -9,12 +9,12 @@
 		</testsuite>
 	</testsuites>
 	<logging>
-		<log type="coverage-clover" target="coverage.xml"/>
+		<clover outputFile="coverage.xml"/>
 	</logging>
-	<filter>
-	  <whitelist addUncoveredFilesFromWhitelist="true" processUncoveredFilesFromWhitelist="false">
-	    <directory suffix=".php">./lib</directory>
-	    <file>./jekyll-exporter.php</file>
-	  </whitelist>
-	</filter>
+	<source>
+		<include>
+			<directory suffix=".php">./lib</directory>
+			<file>./jekyll-exporter.php</file>
+		</include>
+	</source>
 </phpunit>

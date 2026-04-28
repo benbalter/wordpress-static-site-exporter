@@ -61,7 +61,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	/**
 	 * Setup the test class
 	 */
-	static function set_up_before_class() {
+	protected static function set_up_before_class() {
 		parent::set_up_before_class();
 
 		self::$author_id = wp_insert_user(
@@ -144,7 +144,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	/**
 	 * Setup the test suite
 	 */
-	function set_up() {
+	protected function set_up() {
 		parent::set_up();
 
 		global $jekyll_export;
@@ -154,7 +154,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	/**
 	 * Tear down the test suite
 	 */
-	function tear_down() {
+	protected function tear_down() {
 		global $jekyll_export;
 		$jekyll_export->cleanup();
 		$upload_dir = wp_upload_dir();
