@@ -107,3 +107,21 @@ jobs:
       
       - name: phpcs
         run: script/cibuild-phpcs
+
+  vendor-autoload:
+    name: Verify vendor autoload files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify no dev dependencies in committed autoload files
+        run: |
+          dev_packages="phpunit|php-coveralls|wpcs|wp-cli|yoast"
+          for file in vendor/composer/autoload_files.php vendor/composer/autoload_psr4.php vendor/composer/autoload_static.php; do
+            if grep -qiE "$dev_packages" "$file"; then
+              echo "::error::$file contains dev dependency references. Run 'script/vendor' and commit the result."
+              grep -iE "$dev_packages" "$file"
+              exit 1
+            fi
+          done
+          echo "Vendor autoload files look clean — no dev dependency references found."
