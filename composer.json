@@ -16,7 +16,9 @@
     "wp-cli/wp-cli": "~2.4",
     "wp-coding-standards/wpcs": "^3.0",
     "php-coveralls/php-coveralls": "*",
-    "yoast/phpunit-polyfills": "^4.0"
+    "yoast/phpunit-polyfills": "^4.0",
+    "phpstan/phpstan": "^2.0",
+    "szepeviktor/phpstan-wordpress": "^2.0"
   },
   "config": {
     "bin-dir": "bin",

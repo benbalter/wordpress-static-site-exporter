@@ -1,0 +1,12 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - jekyll-exporter.php
+        - lib/
+    excludePaths:
+        - vendor/
+        - node_modules/
+        - tests/

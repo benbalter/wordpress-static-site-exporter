@@ -108,6 +108,30 @@ jobs:
       - name: phpcs
         run: script/cibuild-phpcs
 
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Cache Composer packages
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.4-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse
+
   vendor-autoload:
     name: Verify vendor autoload files
     runs-on: ubuntu-latest
@@ -116,7 +140,7 @@ jobs:
 
       - name: Verify no dev dependencies in committed autoload files
         run: |
-          dev_packages="phpunit|php-coveralls|wpcs|wp-cli|yoast"
+          dev_packages="phpunit|php-coveralls|wpcs|wp-cli|yoast|phpstan|szepeviktor"
           for file in vendor/composer/autoload_files.php vendor/composer/autoload_psr4.php vendor/composer/autoload_static.php; do
             if grep -qiE "$dev_packages" "$file"; then
               echo "::error::$file contains dev dependency references. Run 'script/vendor' and commit the result."
