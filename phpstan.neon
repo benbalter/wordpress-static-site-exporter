@@ -10,3 +10,4 @@ parameters:
         - vendor/
         - node_modules/ (?)
         - tests/
+    treatPhpDocTypesAsCertain: false

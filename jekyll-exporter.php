@@ -194,7 +194,7 @@ class Jekyll_Export {
 	/**
 	 * Convert a posts meta data (both post_meta and the fields in wp_posts) to key value pairs for export
 	 *
-	 * @param Post $post the post.
+	 * @param WP_Post $post the post.
 	 */
 	public function convert_meta( $post ) {
 
@@ -248,8 +248,8 @@ class Jekyll_Export {
 	/**
 	 * Convert post taxonomies for export
 	 *
-	 * @param Post $post the Post object.
-	 * @return Array an array of converted terms
+	 * @param WP_Post $post the Post object.
+	 * @return array an array of converted terms
 	 */
 	public function convert_terms( $post ) {
 
@@ -311,8 +311,8 @@ class Jekyll_Export {
 	/**
 	 * Convert the main post content to Markdown.
 	 *
-	 * @param Post $post the post to Convert.
-	 * @return String the converted post content
+	 * @param WP_Post $post the post to Convert.
+	 * @return string the converted post content
 	 */
 	public function convert_content( $post ) {
 
@@ -421,7 +421,7 @@ class Jekyll_Export {
 		}
 		$temp_dir = trailingslashit( $temp_dir );
 
-		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . md5( time() ) );
+		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . md5( (string) time() ) );
 		$this->zip = $temp_dir . 'wp-jekyll.zip';
 
 		$wp_filesystem->mkdir( $this->dir );
@@ -565,7 +565,7 @@ class Jekyll_Export {
 	 * Write file to temp dir
 	 *
 	 * @param String $output the post content.
-	 * @param Post   $post the Post object.
+	 * @param WP_Post $post the Post object.
 	 */
 	public function write( $output, $post ) {
 
@@ -659,7 +659,7 @@ class Jekyll_Export {
 	 * @param Array  $array the Array.
 	 * @param String $from the original key.
 	 * @param String $to the resulting key.
-	 * @return The New Array
+	 * @return void
 	 */
 	public function rename_key( &$array, $from, $to ) {
 
