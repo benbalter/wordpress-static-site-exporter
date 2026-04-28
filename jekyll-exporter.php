@@ -201,7 +201,7 @@ class Jekyll_Export {
 		// Cache user data to avoid repeated database queries.
 		static $user_cache = array();
 		if ( ! isset( $user_cache[ $post->post_author ] ) ) {
-			$user_data                        = get_userdata( $post->post_author );
+			$user_data                        = get_userdata( (int) $post->post_author );
 			$user_cache[ $post->post_author ] = $user_data ? $user_data->display_name : '';
 		}
 
@@ -564,7 +564,7 @@ class Jekyll_Export {
 	/**
 	 * Write file to temp dir
 	 *
-	 * @param String $output the post content.
+	 * @param String  $output the post content.
 	 * @param WP_Post $post the Post object.
 	 */
 	public function write( $output, $post ) {
