@@ -8,10 +8,13 @@
 			<directory suffix="Test.php">./tests/</directory>
 		</testsuite>
 	</testsuites>
-	<source>
-		<include>
+	<filter>
+		<whitelist processUncoveredFilesFromWhitelist="true">
 			<directory suffix=".php">./lib</directory>
 			<file>./jekyll-exporter.php</file>
-		</include>
-	</source>
+		</whitelist>
+	</filter>
+	<logging>
+		<log type="coverage-clover" target="coverage.xml"/>
+	</logging>
 </phpunit>
