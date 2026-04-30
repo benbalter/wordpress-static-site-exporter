@@ -13,6 +13,9 @@
 		<exclude name="WordPress.WP.GlobalVariablesOverride.Prohibited" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_readfile" />
+		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fopen" />
+		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fread" />
+		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fclose" />
 		<exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames.arrayFound" />
 		<exclude name="Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition" />
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fwrite" />
