@@ -12,7 +12,7 @@
  * Plugin Name: Static Site Exporter
  * Plugin URI:  https://github.com/benbalter/wordpress-to-jekyll-exporter/
  * Description: One-click plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML for Jekyll, Hugo, or other static site generators.
- * Version:     4.0.3
+ * Version:     4.0.4
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
@@ -113,7 +113,7 @@ class Jekyll_Export {
 			return;
 		}
 
-		if ( ! isset( $_GET['type'] ) || 'jekyll' !== $_GET['type'] ) {
+		if ( ! isset( $_GET['type'] ) || 'jekyll' !== sanitize_text_field( wp_unslash( $_GET['type'] ) ) ) {
 			return;
 		}
 
@@ -370,12 +370,16 @@ class Jekyll_Export {
 		$content = $this->localize_urls( $content );
 
 		// Reuse converter instance to avoid recreating it for each post.
-		static $converter = null;
-		if ( null === $converter ) {
+		static $default_converter = null;
+		if ( null === $default_converter ) {
 			$converter_options = apply_filters( 'jekyll_export_markdown_converter_options', array( 'header_style' => 'atx' ) );
-			$converter         = new HtmlConverter( $converter_options );
-			$converter->getEnvironment()->addConverter( new ColspanTableConverter() );
+			$default_converter = new HtmlConverter( $converter_options );
+			$default_converter->getEnvironment()->addConverter( new ColspanTableConverter() );
 		}
+
+		// Allow tests and integrations to swap in a custom converter.  Re-applied
+		// on every call (not cached) so per-test filters don't leak between tests.
+		$converter = apply_filters( 'jekyll_export_html_converter', $default_converter );
 
 		try {
 			$markdown = $converter->convert( $content );
@@ -383,9 +387,11 @@ class Jekyll_Export {
 			// Converter rejected the HTML (e.g., empty or unparseable content).
 			// Fall back to the raw HTML rather than aborting the entire export.
 			// See https://github.com/benbalter/wordpress-static-site-exporter/issues/400.
-			$post_id = isset( $post->ID ) ? (int) $post->ID : 0;
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				$post_id = isset( $post->ID ) ? (int) $post->ID : 0;
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
+			}
 			$content = apply_filters( 'jekyll_export_html', $content );
 			$content = apply_filters( 'jekyll_export_content', $content );
 			return $content;
@@ -717,14 +723,14 @@ class Jekyll_Export {
 	public function zip_folder( $source, $destination ) {
 
 		if ( ! file_exists( $source ) ) {
-			wp_die( 'file does not exist: ' . esc_html( $source ) );
+			throw new \RuntimeException( sprintf( 'file does not exist: %s', $source ) );
 		}
 
 		$source = realpath( $source );
 
 		$zip = new ZipArchive();
 		if ( ! $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE ) ) {
-			wp_die( 'Cannot open zip archive: ' . esc_html( $destination ) );
+			throw new \RuntimeException( sprintf( 'Cannot open zip archive: %s', $destination ) );
 		}
 
 		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source ), RecursiveIteratorIterator::SELF_FIRST );
@@ -761,9 +767,20 @@ class Jekyll_Export {
 		@header( 'Content-Disposition: attachment; filename=jekyll-export.zip' );
 		@header( 'Content-Length: ' . filesize( $this->zip ) );
 
-		// Read file.
+		// Stream the zip in chunks to avoid loading the entire file into
+		// memory (which would defeat the point of having a memory_limit
+		// pre-flight check for large exports).
 		flush();
-		readfile( $this->zip );
+		$handle = fopen( $this->zip, 'rb' );
+		if ( false === $handle ) {
+			return;
+		}
+		while ( ! feof( $handle ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary zip content; escaping would corrupt it.
+			echo fread( $handle, 8192 );
+			flush();
+		}
+		fclose( $handle );
 	}
 
 

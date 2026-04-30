@@ -551,4 +551,57 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->expectException( 'WPDieException' );
 		$jekyll_export->export();
 	}
+
+	/**
+	 * Test that convert_content() falls back to raw HTML when the
+	 * HTML-to-Markdown converter throws InvalidArgumentException, rather than
+	 * aborting the entire export.
+	 *
+	 * Regression test for https://github.com/benbalter/wordpress-static-site-exporter/issues/400.
+	 */
+	function test_convert_content_falls_back_when_converter_throws() {
+		global $jekyll_export;
+
+		$stub = new class() {
+			public function convert( string $html ): string {
+				throw new \InvalidArgumentException( 'Invalid HTML was provided' );
+			}
+		};
+
+		$filter = function () use ( $stub ) {
+			return $stub;
+		};
+		add_filter( 'jekyll_export_html_converter', $filter );
+
+		try {
+			$post_id = wp_insert_post(
+				array(
+					'post_title'   => 'Fallback Test',
+					'post_content' => '<p>Some content that the stub converter will reject.</p>',
+					'post_status'  => 'publish',
+					'post_author'  => self::$author_id,
+				)
+			);
+
+			$post   = get_post( $post_id );
+			$result = $jekyll_export->convert_content( $post );
+
+			$this->assertIsString( $result );
+			$this->assertStringContainsString( 'Some content', $result );
+			$this->assertStringContainsString( '<p>', $result, 'Fallback should preserve raw HTML.' );
+		} finally {
+			remove_filter( 'jekyll_export_html_converter', $filter );
+		}
+	}
+
+	/**
+	 * Test that zip_folder() throws RuntimeException when the source path
+	 * does not exist (rather than calling wp_die() and skipping cleanup).
+	 */
+	function test_zip_folder_throws_when_source_missing() {
+		global $jekyll_export;
+
+		$this->expectException( \RuntimeException::class );
+		$jekyll_export->zip_folder( '/path/that/definitely/does/not/exist', $jekyll_export->dir . 'out.zip' );
+	}
 }

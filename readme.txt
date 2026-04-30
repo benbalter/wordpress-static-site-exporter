@@ -4,7 +4,7 @@ Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.0.3
+Stable tag: 4.0.4
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-to-jekyll-exporter
@@ -271,6 +271,15 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 
 == Changelog ==
+
+= 4.0.4 =
+
+* Stream the export zip to the browser in 8 KB chunks instead of loading the entire archive into memory in `send()`, so large exports no longer hit `memory_limit` after a successful build
+* `zip_folder()` now throws `RuntimeException` instead of calling `wp_die()` directly, so the existing `export()` try/catch renders a friendly error and runs `cleanup()` on partial temp files
+* Added `jekyll_export_html_converter` filter so integrations (and tests) can swap in a custom HTML-to-Markdown converter
+* Gated the v4.0.3 fallback `error_log()` call behind `WP_DEBUG`
+* Hardened sanitization of `$_GET['type']` in the export callback
+* Added regression tests for the v4.0.3 `Invalid HTML was provided` fallback and for the new `zip_folder()` throw behavior
 
 = 4.0.3 =
 

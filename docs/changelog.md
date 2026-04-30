@@ -1,5 +1,14 @@
 ## Changelog
 
+### 4.0.4
+
+* Stream the export zip to the browser in 8 KB chunks instead of loading the entire archive into memory in `send()`, so large exports no longer hit `memory_limit` after a successful build
+* `zip_folder()` now throws `RuntimeException` instead of calling `wp_die()` directly, so the existing `export()` try/catch renders a friendly error and runs `cleanup()` on partial temp files
+* Added `jekyll_export_html_converter` filter so integrations (and tests) can swap in a custom HTML-to-Markdown converter
+* Gated the v4.0.3 fallback `error_log()` call behind `WP_DEBUG`
+* Hardened sanitization of `$_GET['type']` in the export callback
+* Added regression tests for the v4.0.3 `Invalid HTML was provided` fallback and for the new `zip_folder()` throw behavior
+
 ### 4.0.3
 
 * Catch `InvalidArgumentException` from `league/html-to-markdown` in `convert_content()` and fall back to the post's raw HTML for that single post instead of aborting the entire export with "Jekyll Export failed: Invalid HTML was provided" ([#400](https://github.com/benbalter/wordpress-static-site-exporter/issues/400))
