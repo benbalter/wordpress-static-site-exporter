@@ -388,7 +388,7 @@ class Jekyll_Export {
 			// Fall back to the raw HTML rather than aborting the entire export.
 			// See https://github.com/benbalter/wordpress-static-site-exporter/issues/400.
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$post_id = isset( $post->ID ) ? (int) $post->ID : 0;
+				$post_id = (int) $post->ID;
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
 			}
@@ -719,10 +719,13 @@ class Jekyll_Export {
 	 *
 	 * @param String $source the source directory to zip.
 	 * @param String $destination the path to output the zip.
+	 *
+	 * @throws \RuntimeException If the source directory does not exist or the zip file cannot be opened.
 	 */
 	public function zip_folder( $source, $destination ) {
 
 		if ( ! file_exists( $source ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
 			throw new \RuntimeException( sprintf( 'file does not exist: %s', $source ) );
 		}
 
@@ -730,6 +733,7 @@ class Jekyll_Export {
 
 		$zip = new ZipArchive();
 		if ( ! $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
 			throw new \RuntimeException( sprintf( 'Cannot open zip archive: %s', $destination ) );
 		}
 
