@@ -12,7 +12,7 @@
  * Plugin Name: Static Site Exporter
  * Plugin URI:  https://github.com/benbalter/wordpress-to-jekyll-exporter/
  * Description: One-click plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML for Jekyll, Hugo, or other static site generators.
- * Version:     4.0.2
+ * Version:     4.0.3
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
@@ -377,7 +377,19 @@ class Jekyll_Export {
 			$converter->getEnvironment()->addConverter( new ColspanTableConverter() );
 		}
 
-		$markdown = $converter->convert( $content );
+		try {
+			$markdown = $converter->convert( $content );
+		} catch ( \InvalidArgumentException $e ) {
+			// Converter rejected the HTML (e.g., empty or unparseable content).
+			// Fall back to the raw HTML rather than aborting the entire export.
+			// See https://github.com/benbalter/wordpress-static-site-exporter/issues/400.
+			$post_id = isset( $post->ID ) ? (int) $post->ID : 0;
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
+			$content = apply_filters( 'jekyll_export_html', $content );
+			$content = apply_filters( 'jekyll_export_content', $content );
+			return $content;
+		}
 
 		if ( strpos( $markdown, '[]: ' ) !== false ) {
 			// faulty links; return plain HTML.

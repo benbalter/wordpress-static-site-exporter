@@ -1,5 +1,9 @@
 ## Changelog
 
+### 4.0.3
+
+* Catch `InvalidArgumentException` from `league/html-to-markdown` in `convert_content()` and fall back to the post's raw HTML for that single post instead of aborting the entire export with "Jekyll Export failed: Invalid HTML was provided" ([#400](https://github.com/benbalter/wordpress-static-site-exporter/issues/400))
+
 ### 4.0.2
 
 * Add shutdown handler to surface fatal errors (memory exhaustion, max execution time) during export with actionable error messages instead of a generic WordPress critical error page

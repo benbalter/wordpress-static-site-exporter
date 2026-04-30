@@ -4,7 +4,7 @@ Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.0.2
+Stable tag: 4.0.3
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-to-jekyll-exporter
@@ -271,6 +271,10 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 
 == Changelog ==
+
+= 4.0.3 =
+
+* Catch `InvalidArgumentException` from `league/html-to-markdown` in `convert_content()` and fall back to the post's raw HTML for that single post instead of aborting the entire export with "Jekyll Export failed: Invalid HTML was provided" ([#400](https://github.com/benbalter/wordpress-static-site-exporter/issues/400))
 
 = 4.0.2 =
 
