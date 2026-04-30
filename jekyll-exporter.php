@@ -604,9 +604,9 @@ class Jekyll_Export {
 		$message = $error['message'];
 
 		// Detect common causes and add guidance.
-		if ( stripos( $message, 'memory' ) !== false ) {
+		if ( stripos( $message, 'Allowed memory size' ) !== false ) {
 			$message .= ' ' . __( 'Try increasing the PHP memory_limit in php.ini or contact your hosting provider.', 'jekyll-exporter' );
-		} elseif ( stripos( $message, 'time' ) !== false ) {
+		} elseif ( stripos( $message, 'Maximum execution time' ) !== false ) {
 			$message .= ' ' . __( 'The export took too long. Try exporting fewer posts using WP-CLI with the --category or --post_type flags.', 'jekyll-exporter' );
 		}
 
