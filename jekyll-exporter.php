@@ -90,11 +90,19 @@ class Jekyll_Export {
 	public $zip;
 
 	/**
+	 * Whether an export is currently in progress (used by the shutdown handler).
+	 *
+	 * @var bool
+	 */
+	private $exporting = false;
+
+	/**
 	 * Hook into WP Core
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'current_screen', array( $this, 'callback' ) );
+		add_action( 'admin_notices', array( $this, 'display_environment_notice' ) );
 	}
 
 	/**
@@ -127,6 +135,31 @@ class Jekyll_Export {
 	 */
 	public function register_menu() {
 		add_management_page( __( 'Export to Jekyll', 'jekyll-exporter' ), __( 'Export to Jekyll', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll&_wpnonce=' . wp_create_nonce( 'jekyll_export' ) );
+	}
+
+	/**
+	 * Display an admin notice on the Tools → Export page when the server
+	 * environment does not meet the requirements for a Jekyll export.
+	 */
+	public function display_environment_notice() {
+		$screen = get_current_screen();
+		if ( ! $screen || 'export' !== $screen->id ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$validation = $this->validate_environment();
+		if ( ! is_wp_error( $validation ) ) {
+			return;
+		}
+
+		echo '<div class="notice notice-error"><p>';
+		echo '<strong>' . esc_html__( 'Jekyll Export:', 'jekyll-exporter' ) . '</strong> ';
+		echo wp_kses_post( implode( '<br>', $validation->get_error_messages() ) );
+		echo '</p></div>';
 	}
 
 
@@ -460,6 +493,19 @@ class Jekyll_Export {
 			);
 		}
 
+		$memory_limit = ini_get( 'memory_limit' );
+		if ( ! empty( $memory_limit ) && -1 !== (int) $memory_limit ) {
+			$memory_bytes = wp_convert_hr_to_bytes( $memory_limit );
+			$min_memory   = 64 * 1024 * 1024; // 64 MB minimum.
+			if ( $memory_bytes < $min_memory ) {
+				$errors->add(
+					'low_memory',
+					/* translators: %s: current PHP memory limit value */
+					sprintf( __( 'The PHP memory limit (%s) may be too low for export. A minimum of 64M is recommended. You can increase it in php.ini or contact your hosting provider.', 'jekyll-exporter' ), esc_html( $memory_limit ) )
+				);
+			}
+		}
+
 		return $errors->has_errors() ? $errors : true;
 	}
 
@@ -483,6 +529,12 @@ class Jekyll_Export {
 		// Attempt to increase memory limit for large exports.
 		wp_raise_memory_limit( 'jekyll_export' );
 
+		// Register a shutdown handler to catch fatal errors (e.g. memory
+		// exhaustion) that bypass the try-catch block, turning a generic 500
+		// Internal Server Error into a descriptive error page.
+		$this->exporting = true;
+		register_shutdown_function( array( $this, 'shutdown_handler' ) );
+
 		try {
 			$ob_level_before = ob_get_level();
 			do_action( 'jekyll_export' );
@@ -495,7 +547,10 @@ class Jekyll_Export {
 			ob_end_clean();
 			$this->send();
 			$this->cleanup();
+			$this->exporting = false;
 		} catch ( \Throwable $e ) {
+			$this->exporting = false;
+
 			// Clean up only output buffers that export() started, leaving any
 			// pre-existing WordPress/admin buffers intact.
 			while ( ob_get_level() > $ob_level_before ) {
@@ -514,6 +569,56 @@ class Jekyll_Export {
 				array( 'back_link' => true )
 			);
 		}
+	}
+
+	/**
+	 * Shutdown handler to catch fatal errors during export.
+	 *
+	 * PHP fatal errors (e.g. memory exhaustion, maximum execution time) cannot
+	 * be caught by try-catch.  This handler inspects the last error and, when
+	 * a fatal error occurred while an export was in progress, outputs a
+	 * descriptive error page instead of the generic "Internal Server Error".
+	 */
+	public function shutdown_handler() {
+		if ( ! $this->exporting ) {
+			return;
+		}
+
+		$error = error_get_last();
+		if ( null === $error ) {
+			return;
+		}
+
+		// Only handle fatal error types.
+		$fatal_types = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
+		if ( ! ( $error['type'] & $fatal_types ) ) {
+			return;
+		}
+
+		// Clean any partial output.
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+
+		// Build a user-friendly message.
+		$message = $error['message'];
+
+		// Detect common causes and add guidance.
+		if ( stripos( $message, 'memory' ) !== false ) {
+			$message .= ' ' . __( 'Try increasing the PHP memory_limit in php.ini or contact your hosting provider.', 'jekyll-exporter' );
+		} elseif ( stripos( $message, 'time' ) !== false ) {
+			$message .= ' ' . __( 'The export took too long. Try exporting fewer posts using WP-CLI with the --category or --post_type flags.', 'jekyll-exporter' );
+		}
+
+		wp_die(
+			/* translators: %s: error message from the fatal error */
+			wp_kses_post( sprintf( __( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $message ) ) ),
+			esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+			array(
+				'back_link' => true,
+				'response'  => 500,
+			)
+		);
 	}
 
 

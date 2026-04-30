@@ -477,6 +477,53 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that validate_environment checks memory limit
+	 */
+	function test_validate_environment_low_memory() {
+		global $jekyll_export;
+
+		$original = ini_get( 'memory_limit' );
+		ini_set( 'memory_limit', '16M' ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Blacklisted
+
+		$result = $jekyll_export->validate_environment();
+
+		ini_set( 'memory_limit', $original ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Blacklisted
+
+		$this->assertInstanceOf( 'WP_Error', $result );
+		$this->assertTrue( in_array( 'low_memory', $result->get_error_codes(), true ) );
+	}
+
+	/**
+	 * Test that shutdown_handler does nothing when not exporting
+	 */
+	function test_shutdown_handler_noop_when_not_exporting() {
+		global $jekyll_export;
+
+		// Should return early without calling wp_die.
+		$jekyll_export->shutdown_handler();
+
+		// If we get here, it didn't call wp_die (which would throw WPDieException).
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * Test that display_environment_notice only runs on export screen
+	 */
+	function test_display_environment_notice_wrong_screen() {
+		global $jekyll_export;
+
+		// Set a non-export screen.
+		set_current_screen( 'dashboard' );
+
+		// Should output nothing.
+		ob_start();
+		$jekyll_export->display_environment_notice();
+		$output = ob_get_clean();
+
+		$this->assertEmpty( $output );
+	}
+
+	/**
 	 * Test that export uses try-catch and completes without fatal error
 	 */
 	function test_export_catches_exception_during_convert() {
