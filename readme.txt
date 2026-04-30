@@ -4,7 +4,7 @@ Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.0.1
+Stable tag: 4.0.2
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-to-jekyll-exporter
@@ -271,6 +271,12 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 
 == Changelog ==
+
+= 4.0.2 =
+
+* Add shutdown handler to surface fatal errors (memory exhaustion, max execution time) during export with actionable error messages instead of a generic WordPress critical error page
+* Add proactive `memory_limit` pre-flight check (warns when below 64MB) in `validate_environment()`
+* Display admin error notice on Tools → Export when environment validation fails, before the user clicks Export
 
 = 4.0.1 =
 

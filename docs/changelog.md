@@ -1,5 +1,11 @@
 ## Changelog
 
+### 4.0.2
+
+* Add shutdown handler to surface fatal errors (memory exhaustion, max execution time) during export with actionable error messages instead of a generic WordPress critical error page
+* Add proactive `memory_limit` pre-flight check (warns when below 64MB) in `validate_environment()`
+* Display admin error notice on Tools → Export when environment validation fails, before the user clicks Export
+
 ### 4.0.1
 
 * Security: Use cryptographically secure randomness (`wp_generate_password`) instead of `md5(time())` for the export temp directory name to prevent symlink/TOCTOU attacks on shared hosts (CWE-330/377)
