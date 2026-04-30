@@ -482,15 +482,16 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	function test_validate_environment_low_memory() {
 		global $jekyll_export;
 
-		$original = ini_get( 'memory_limit' );
-		ini_set( 'memory_limit', '16M' ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Blacklisted
+		// Override the memory limit via filter to avoid PHP rejecting ini_set
+		// when current usage already exceeds the target value.
+		add_filter( 'jekyll_export_memory_limit', function() { return '16M'; } );
 
 		$result = $jekyll_export->validate_environment();
 
-		ini_set( 'memory_limit', $original ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Blacklisted
+		remove_all_filters( 'jekyll_export_memory_limit' );
 
 		$this->assertInstanceOf( 'WP_Error', $result );
-		$this->assertTrue( in_array( 'low_memory', $result->get_error_codes(), true ) );
+		$this->assertTrue( in_array( 'insufficient_memory', $result->get_error_codes(), true ) );
 	}
 
 	/**

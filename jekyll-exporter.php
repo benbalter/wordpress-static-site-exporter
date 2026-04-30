@@ -493,15 +493,15 @@ class Jekyll_Export {
 			);
 		}
 
-		$memory_limit = ini_get( 'memory_limit' );
-		if ( ! empty( $memory_limit ) && -1 !== (int) $memory_limit ) {
+		$memory_limit = apply_filters( 'jekyll_export_memory_limit', ini_get( 'memory_limit' ) );
+		if ( '' !== $memory_limit && -1 !== (int) $memory_limit ) {
 			$memory_bytes = wp_convert_hr_to_bytes( $memory_limit );
 			$min_memory   = 64 * 1024 * 1024; // 64 MB minimum.
 			if ( $memory_bytes < $min_memory ) {
 				$errors->add(
-					'low_memory',
+					'insufficient_memory',
 					/* translators: %s: current PHP memory limit value */
-					sprintf( __( 'The PHP memory limit (%s) may be too low for export. A minimum of 64M is recommended. You can increase it in php.ini or contact your hosting provider.', 'jekyll-exporter' ), esc_html( $memory_limit ) )
+					sprintf( __( 'The PHP memory limit (%s) is below the minimum required for export. Static Site Exporter requires at least 64M to continue. Please increase the limit in php.ini or contact your hosting provider.', 'jekyll-exporter' ), esc_html( $memory_limit ) )
 				);
 			}
 		}
@@ -590,7 +590,7 @@ class Jekyll_Export {
 		}
 
 		// Only handle fatal error types.
-		$fatal_types = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
+		$fatal_types = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
 		if ( ! ( $error['type'] & $fatal_types ) ) {
 			return;
 		}
