@@ -1,5 +1,12 @@
 ## Changelog
 
+### 4.0.1
+
+* Security: Use cryptographically secure randomness (`wp_generate_password`) instead of `md5(time())` for the export temp directory name to prevent symlink/TOCTOU attacks on shared hosts (CWE-330/377)
+* Security: Reject non-CLI access in deprecated `jekyll-export-cli.php` before bootstrapping WordPress (CWE-665)
+* Security: Sanitize each path segment of page filenames as defense-in-depth against path traversal (CWE-22)
+* Fix stale `$upload_basedir` cache in `copy_recursive()` on multisite by keying it on the current blog ID
+
 ### 4.0.0
 
 * **Breaking:** Minimum PHP version bumped from 7.2.5 to 8.2

@@ -4,7 +4,7 @@ Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.0.0
+Stable tag: 4.0.1
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-to-jekyll-exporter
@@ -271,6 +271,13 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 
 == Changelog ==
+
+= 4.0.1 =
+
+* Security: Use cryptographically secure randomness (`wp_generate_password`) instead of `md5(time())` for the export temp directory name to prevent symlink/TOCTOU attacks on shared hosts (CWE-330/377)
+* Security: Reject non-CLI access in deprecated `jekyll-export-cli.php` before bootstrapping WordPress (CWE-665)
+* Security: Sanitize each path segment of page filenames as defense-in-depth against path traversal (CWE-22)
+* Fix stale `$upload_basedir` cache in `copy_recursive()` on multisite by keying it on the current blog ID
 
 = 4.0.0 =
 

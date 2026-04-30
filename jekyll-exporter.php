@@ -12,7 +12,7 @@
  * Plugin Name: Static Site Exporter
  * Plugin URI:  https://github.com/benbalter/wordpress-to-jekyll-exporter/
  * Description: One-click plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML for Jekyll, Hugo, or other static site generators.
- * Version:     4.0.0
+ * Version:     4.0.1
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
@@ -423,7 +423,10 @@ class Jekyll_Export {
 		}
 		$temp_dir = trailingslashit( $temp_dir );
 
-		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . md5( (string) time() ) );
+		// Use cryptographically secure randomness for the temp dir name to prevent
+		// a co-located attacker from pre-creating the path (e.g. as a symlink) to
+		// redirect file writes outside the export root.
+		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . wp_generate_password( 12, false ) );
 		$this->zip = $temp_dir . 'wp-jekyll.zip';
 
 		$wp_filesystem->mkdir( $this->dir );
@@ -576,7 +579,10 @@ class Jekyll_Export {
 		if ( ! in_array( get_post_status( $post ), array( 'publish', 'future' ), true ) ) {
 			$filename = '_drafts/' . sanitize_file_name( get_page_uri( $post->ID ) . '-' . ( get_the_title( $post->ID ) ) . '.md' );
 		} elseif ( get_post_type( $post ) === 'page' ) {
-			$filename = get_page_uri( $post->ID ) . '.md';
+			// Sanitize each path segment independently so the directory hierarchy is
+			// preserved while individual segments cannot contain traversal sequences.
+			$segments = array_map( 'sanitize_file_name', explode( '/', get_page_uri( $post->ID ) ) );
+			$filename = implode( '/', $segments ) . '.md';
 		} else {
 			$filename = '_' . get_post_type( $post ) . 's/' . gmdate( 'Y-m-d', strtotime( $post->post_date ) ) . '-' . sanitize_file_name( $post->post_name ) . '.md';
 		}
@@ -718,16 +724,19 @@ class Jekyll_Export {
 
 			// Security: Validate that the resolved path is within ABSPATH or the uploads directory.
 			// This prevents symlinks from being used to access files outside the WordPress installation.
-			// Cache upload_dir to avoid repeated filesystem operations in recursive calls.
-			static $upload_basedir = null;
-			if ( null === $upload_basedir ) {
+			// Cache upload_dir per-blog to avoid repeated filesystem operations while remaining
+			// correct across switch_to_blog() boundaries on multisite.
+			static $upload_basedir_cache = array();
+			$blog_id                     = function_exists( 'get_current_blog_id' ) ? get_current_blog_id() : 0;
+			if ( ! isset( $upload_basedir_cache[ $blog_id ] ) ) {
 				$upload_dir = wp_upload_dir();
 				// Validate that basedir key exists and is not empty.
 				if ( empty( $upload_dir['basedir'] ) ) {
 					return false;
 				}
-				$upload_basedir = $upload_dir['basedir'];
+				$upload_basedir_cache[ $blog_id ] = $upload_dir['basedir'];
 			}
+			$upload_basedir = $upload_basedir_cache[ $blog_id ];
 
 			$allowed_bases = array(
 				ABSPATH,
