@@ -595,6 +595,118 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that convert_content() also falls back to raw HTML when the converter
+	 * throws a Throwable other than InvalidArgumentException (e.g. RuntimeException),
+	 * so an unexpected converter error can't abort the entire export.
+	 */
+	function test_convert_content_falls_back_on_generic_throwable() {
+		global $jekyll_export;
+
+		$stub = new class() {
+			public function convert( string $html ): string {
+				throw new \RuntimeException( 'Unexpected converter failure' );
+			}
+		};
+
+		$filter = function () use ( $stub ) {
+			return $stub;
+		};
+		add_filter( 'jekyll_export_html_converter', $filter );
+
+		try {
+			$post_id = wp_insert_post(
+				array(
+					'post_title'   => 'Generic Throwable Fallback',
+					'post_content' => '<p>Content the stub converter will choke on.</p>',
+					'post_status'  => 'publish',
+					'post_author'  => self::$author_id,
+				)
+			);
+
+			$post   = get_post( $post_id );
+			$result = $jekyll_export->convert_content( $post );
+
+			$this->assertIsString( $result );
+			$this->assertStringContainsString( 'Content the stub converter', $result );
+			$this->assertStringContainsString( '<p>', $result, 'Fallback should preserve raw HTML.' );
+		} finally {
+			remove_filter( 'jekyll_export_html_converter', $filter );
+		}
+	}
+
+	/**
+	 * Test that revisions are excluded from the export by default, but can be
+	 * restored via the jekyll_export_post_types filter.
+	 */
+	function test_revisions_excluded_by_default() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Revisioned Post',
+				'post_content' => 'Original content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		// Force a stored revision.
+		wp_update_post(
+			array(
+				'ID'           => $post_id,
+				'post_content' => 'Updated content',
+			)
+		);
+		$revisions   = wp_get_post_revisions( $post_id );
+		$revision_id = $revisions ? array_key_first( $revisions ) : 0;
+		$this->assertNotEmpty( $revision_id, 'A revision should have been created for the test.' );
+
+		// Default: revision must not be part of the export set.
+		wp_cache_delete( 'jekyll_export_posts' );
+		$default_posts = $jekyll_export->get_posts();
+		$this->assertContains( $post_id, $default_posts );
+		$this->assertNotContains( $revision_id, $default_posts, 'Revisions should be excluded by default.' );
+
+		// With the filter, revisions are restored.
+		$filter = function ( $types ) {
+			$types[] = 'revision';
+			return $types;
+		};
+		add_filter( 'jekyll_export_post_types', $filter );
+		try {
+			wp_cache_delete( 'jekyll_export_posts' );
+			$with_revisions = $jekyll_export->get_posts();
+			$this->assertContains( $revision_id, $with_revisions, 'Filter should restore revision export.' );
+		} finally {
+			remove_filter( 'jekyll_export_post_types', $filter );
+			wp_cache_delete( 'jekyll_export_posts' );
+		}
+	}
+
+	/**
+	 * Test that a public custom field can still override a reserved front matter
+	 * key (the override behavior is preserved; only a WP_DEBUG warning is added).
+	 */
+	function test_custom_field_can_override_reserved_key() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Layout Override',
+				'post_content' => 'Content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+		update_post_meta( $post_id, 'layout', 'custom-layout' );
+
+		$meta = $jekyll_export->convert_meta( get_post( $post_id ) );
+
+		// get_post_custom() returns each meta value wrapped in an array.
+		$this->assertEquals( array( 'custom-layout' ), $meta['layout'], 'Custom field should override the derived layout.' );
+	}
+
+	/**
 	 * Test that zip_folder() throws RuntimeException when the source path
 	 * does not exist (rather than calling wp_die() and skipping cleanup).
 	 */

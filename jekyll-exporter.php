@@ -12,7 +12,7 @@
  * Plugin Name: Static Site Exporter
  * Plugin URI:  https://github.com/benbalter/wordpress-to-jekyll-exporter/
  * Description: One-click plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML for Jekyll, Hugo, or other static site generators.
- * Version:     4.0.4
+ * Version:     4.1.0
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
@@ -175,7 +175,9 @@ class Jekyll_Export {
 			return $posts;
 		}
 
-		$post_types = apply_filters( 'jekyll_export_post_types', array( 'post', 'page', 'revision' ) );
+		// Revisions are excluded by default (they would fill `_drafts/` with duplicate copies
+		// of every post). Re-add 'revision' via the `jekyll_export_post_types` filter if needed.
+		$post_types = apply_filters( 'jekyll_export_post_types', array( 'post', 'page' ) );
 
 		// Allow filtering by taxonomy terms (e.g., categories, tags).
 		$taxonomy_filters = apply_filters( 'jekyll_export_taxonomy_filters', array() );
@@ -255,11 +257,20 @@ class Jekyll_Export {
 			$output['permalink'] = str_replace( home_url(), '', get_permalink( $post ) );
 		}
 
+		// Reserved front matter keys set above; a public custom field of the same name will
+		// override these (an intentional feature for e.g. `layout`/`image`, but worth surfacing).
+		$reserved_keys = array_keys( $output );
+
 		// Convert traditional post_meta values, hide hidden values.
 		foreach ( get_post_custom( $post->ID ) as $key => $value ) {
 
 			if ( substr( $key, 0, 1 ) === '_' ) {
 				continue;
+			}
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && in_array( $key, $reserved_keys, true ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( sprintf( '[jekyll-export] Custom field "%s" on post %d overrides reserved front matter.', $key, (int) $post->ID ) );
 			}
 
 			$output[ $key ] = $value;
@@ -383,30 +394,38 @@ class Jekyll_Export {
 
 		try {
 			$markdown = $converter->convert( $content );
-		} catch ( \InvalidArgumentException $e ) {
-			// Converter rejected the HTML (e.g., empty or unparseable content).
-			// Fall back to the raw HTML rather than aborting the entire export.
+		} catch ( \Throwable $e ) {
+			// Converter failed (e.g., empty/unparseable content, or an unexpected error
+			// raised inside a converter). Fall back to the raw HTML for this post rather
+			// than aborting the entire export.
 			// See https://github.com/benbalter/wordpress-static-site-exporter/issues/400.
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				$post_id = (int) $post->ID;
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
 			}
-			$content = apply_filters( 'jekyll_export_html', $content );
-			$content = apply_filters( 'jekyll_export_content', $content );
-			return $content;
+			return $this->html_fallback( $content );
 		}
 
 		if ( strpos( $markdown, '[]: ' ) !== false ) {
 			// faulty links; return plain HTML.
-			$content = apply_filters( 'jekyll_export_html', $content );
-			$content = apply_filters( 'jekyll_export_content', $content );
-			return $content;
+			return $this->html_fallback( $content );
 		}
 
 		$markdown = apply_filters( 'jekyll_export_markdown', $markdown );
 		$markdown = apply_filters( 'jekyll_export_content', $markdown );
 		return $markdown;
+	}
+
+	/**
+	 * Apply the raw-HTML fallback filters when Markdown conversion is skipped or fails.
+	 *
+	 * @param string $content the raw HTML content.
+	 * @return string the filtered fallback content.
+	 */
+	private function html_fallback( $content ) {
+		$content = apply_filters( 'jekyll_export_html', $content );
+		return apply_filters( 'jekyll_export_content', $content );
 	}
 
 	/**

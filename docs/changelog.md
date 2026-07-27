@@ -1,5 +1,12 @@
 ## Changelog
 
+### 4.1.0
+
+* **Behavior change:** Post revisions are no longer exported by default. Previously `revision` was included in the default post types, which filled the `_drafts/` folder with duplicate copies of every post. To restore the old behavior, re-add `'revision'` via the `jekyll_export_post_types` filter
+* Broadened the `convert_content()` fallback to catch any `Throwable` (not just `InvalidArgumentException`) from the HTML-to-Markdown converter, so an unexpected converter error falls back to the post's raw HTML instead of aborting the entire export
+* Emit a `WP_DEBUG`-gated warning when a public custom field shadows a reserved front matter key (e.g. `layout`, `image`, `date`), surfacing silent overrides. The override behavior itself is unchanged
+* Internal: de-duplicated the raw-HTML fallback filters in `convert_content()` and the reflection boilerplate in `ColspanTableConverter`
+
 ### 4.0.4
 
 * Stream the export zip to the browser in 8 KB chunks instead of loading the entire archive into memory in `send()`, so large exports no longer hit `memory_limit` after a successful build

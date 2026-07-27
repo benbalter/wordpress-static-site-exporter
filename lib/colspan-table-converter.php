@@ -105,20 +105,34 @@ class ColspanTableConverter extends TableConverter {
 	 * @throws ReflectionException If the parent class structure has changed.
 	 */
 	private function get_column_alignments() {
-		if ( null === $this->column_alignments_property ) {
-			try {
-				$reflection                       = new ReflectionClass( parent::class );
-				$this->column_alignments_property = $reflection->getProperty( 'columnAlignments' );
-				$this->column_alignments_property->setAccessible( true );
-			} catch ( ReflectionException $e ) {
-				// If reflection fails, the parent library structure has changed.
-				// Return null to disable alignment tracking and allow conversion to continue.
-				// The table will still be converted correctly, just without column alignment markers.
-				return null;
-			}
+		if ( ! $this->ensure_column_alignments_property() ) {
+			// Reflection unavailable (parent library structure changed); disable alignment
+			// tracking and allow conversion to continue without column alignment markers.
+			return null;
 		}
 
 		return $this->column_alignments_property->getValue( $this );
+	}
+
+	/**
+	 * Lazily resolve and cache the parent's private columnAlignments property via reflection.
+	 *
+	 * @return bool True if the property is available, false if reflection failed.
+	 */
+	private function ensure_column_alignments_property() {
+		if ( null !== $this->column_alignments_property ) {
+			return true;
+		}
+
+		try {
+			$reflection                       = new ReflectionClass( parent::class );
+			$this->column_alignments_property = $reflection->getProperty( 'columnAlignments' );
+			$this->column_alignments_property->setAccessible( true );
+		} catch ( ReflectionException $e ) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -129,16 +143,10 @@ class ColspanTableConverter extends TableConverter {
 	 * @param string $align The alignment value (left, right, center, or empty).
 	 */
 	private function add_column_alignment( $align ) {
-		if ( null === $this->column_alignments_property ) {
-			try {
-				$reflection                       = new ReflectionClass( parent::class );
-				$this->column_alignments_property = $reflection->getProperty( 'columnAlignments' );
-				$this->column_alignments_property->setAccessible( true );
-			} catch ( ReflectionException $e ) {
-				// If reflection fails, silently return to allow conversion to continue.
-				// The table will still be converted correctly, just without column alignment markers.
-				return;
-			}
+		if ( ! $this->ensure_column_alignments_property() ) {
+			// Reflection unavailable; silently return so conversion continues without
+			// column alignment markers.
+			return;
 		}
 
 		$column_alignments   = $this->column_alignments_property->getValue( $this );

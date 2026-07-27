@@ -4,7 +4,7 @@ Tags: jekyll, github, github pages, yaml, export, markdown
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.0.4
+Stable tag: 4.1.0
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-to-jekyll-exporter
@@ -271,6 +271,13 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 
 == Changelog ==
+
+= 4.1.0 =
+
+* **Behavior change:** Post revisions are no longer exported by default. Previously `revision` was included in the default post types, which filled the `_drafts/` folder with duplicate copies of every post. To restore the old behavior, re-add `'revision'` via the `jekyll_export_post_types` filter
+* Broadened the `convert_content()` fallback to catch any `Throwable` (not just `InvalidArgumentException`) from the HTML-to-Markdown converter, so an unexpected converter error falls back to the post's raw HTML instead of aborting the entire export
+* Emit a `WP_DEBUG`-gated warning when a public custom field shadows a reserved front matter key (e.g. `layout`, `image`, `date`), surfacing silent overrides. The override behavior itself is unchanged
+* Internal: de-duplicated the raw-HTML fallback filters in `convert_content()` and the reflection boilerplate in `ColspanTableConverter`
 
 = 4.0.4 =
 
