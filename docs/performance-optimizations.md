@@ -226,4 +226,4 @@ Potential areas for future improvement:
 
 For questions about these optimizations or to report performance issues:
 - [Open an issue](https://github.com/benbalter/wordpress-to-jekyll-exporter/issues)
-- [View the documentation](https://ben.balter.com/wordpress-to-jekyll-exporter/)
+- [View the documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs)

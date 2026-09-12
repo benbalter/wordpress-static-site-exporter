@@ -27,7 +27,7 @@ View plugin in [the WordPress plugin directory](https://wordpress.org/plugins/je
 
 ## More information
 
-See [the full documentation](https://ben.balter.com/wordpress-to-jekyll-exporter):
+See [the full documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs):
 
 * [Changelog](../docs/changelog.md)
 * [Command-line-usage](../docs/command-line-usage.md)

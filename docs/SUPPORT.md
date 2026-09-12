@@ -1,8 +1,8 @@
 ## Where to get help or report an issue
 
-* For getting started and general documentation, please browse, and feel free to contribute to [the project documentation](http://ben.balter.com/wordpress-to-jekyll-exporter/).
+* For getting started and general documentation, please browse, and feel free to contribute to [the project documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs).
 * For support questions ("How do I", "I can't seem to", etc.) please search and if not already answered, open a thread in the [Support Forums](http://wordpress.org/support/plugin/jekyll-exporter).
-* For technical issues (e.g., to submit a bug or feature request) please search and if not already filed, [open an issue on GitHub](https://github.com/benbalter//wordpress-to-jekyll-exporter/issues).
+* For technical issues (e.g., to submit a bug or feature request) please search and if not already filed, [open an issue on GitHub](https://github.com/benbalter/wordpress-static-site-exporter/issues).
 
 ## Things to check before reporting an issue
 

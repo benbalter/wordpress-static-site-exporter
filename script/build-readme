@@ -1,28 +1,73 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
-exclude = %w[README header _config.yml CODE_OF_CONDUCT CONTRIBUTING]
-docs_url = "https://ben.balter.com/wordpress-to-jekyll-exporter/"
-output = File.open("./docs/header.md").read
+# Generates readme.txt (the WordPress.org plugin readme) from docs/.
+# Run this after editing anything in docs/ and commit the result.
 
-# Remove title, badge, and description from README
-readme = File.open("./docs/README.md").read
-readme = "\n#" + readme.split("#")[2..-1].join("#")
-output << readme
+REPO_URL = "https://github.com/benbalter/wordpress-static-site-exporter"
+BLOB_URL = "#{REPO_URL}/blob/master"
+PLUGIN_FILE = "jekyll-exporter.php"
+HEADER = "docs/header.md"
+INTRO = "docs/README.md"
 
-docs = Dir["./docs/*"]
+# The order sections appear in readme.txt. Docs missing from this list are
+# deliberately left out -- they are GitHub-only or internal notes. A new
+# user-facing doc has to be added here or it will not ship.
+SECTIONS = %w[
+  selective-export
+  custom-post-types
+  changelog
+  developing-locally
+  custom-fields
+  command-line-usage
+  SUPPORT
+  performance-optimizations
+  performance-tips
+  required-php-version
+  SECURITY
+].freeze
 
-docs.each do |file|
-  next if exclude.include?(File.basename(file,".md"))
-  next if File.directory?(file)
-  output << "\n\n"
-  output << File.open(file).read
+def die(message)
+  abort "build-readme: #{message}"
 end
 
-output.gsub! /^### ?(.*?)$/im, "= \\1 ="
-output.gsub! /^## ?(.*?)$/im, "== \\1 =="
-output.gsub! /^# ?(.*?)$/im, "=== \\1 ==="
-output.gsub! /\]\(\.?\/?(.*?)\.md/, "](#{docs_url}\\1/"
+# Stable tag has to track the plugin's Version header. When the two disagree,
+# WordPress.org serves the wrong release to every user.
+version = File.read(PLUGIN_FILE)[/^\s*\*\s*Version:\s*(\S+)/, 1]
+die "could not read Version from #{PLUGIN_FILE}" if version.nil?
 
-File.open("readme.txt", "wb") do |file|
-  file << output
+output = File.read(HEADER)
+die "no Stable tag line in #{HEADER}" unless output.sub!(/^Stable tag:.*$/, "Stable tag: #{version}")
+
+# Skip README.md's logo, title, description, and badges; keep from its first
+# section heading onward.
+intro = File.read(INTRO)
+intro_start = intro.index(/^## /)
+die "no section headings in #{INTRO}" if intro_start.nil?
+output << "\n" << intro[intro_start..]
+
+SECTIONS.each do |name|
+  path = File.join("docs", "#{name}.md")
+  die "missing doc: #{path}" unless File.exist?(path)
+  output << "\n\n" << File.read(path)
 end
+
+# Markdown headings to WordPress.org readme headings. Deepest first, so an
+# already-converted heading is not matched again.
+output.gsub!(/^### ?(.*?)$/, '= \1 =')
+output.gsub!(/^## ?(.*?)$/, '== \1 ==')
+output.gsub!(/^# ?(.*?)$/, '=== \1 ===')
+
+# Relative Markdown links point at GitHub, which is where the docs are actually
+# served -- the ben.balter.com docs site does not resolve. Targets are written
+# relative to the doc that contains them, and every included doc lives in docs/,
+# so resolving against that directory yields the path within the repo.
+# The pattern excludes ":" so absolute URLs ending in .md are left alone.
+docs_dir = File.expand_path("docs")
+root = File.expand_path(".")
+output.gsub!(%r{\]\(([^):]+?\.md)\)}) do
+  repo_path = File.expand_path(Regexp.last_match(1), docs_dir).delete_prefix("#{root}/")
+  "](#{BLOB_URL}/#{repo_path})"
+end
+
+File.write("readme.txt", output)

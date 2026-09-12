@@ -1,6 +1,6 @@
 ## Changelog
 
-### Unreleased
+### 4.1.1
 
 * Fixed a zero-byte or unreadable zip download ([#413](https://github.com/benbalter/wordpress-static-site-exporter/issues/413)). `ZipArchive` defers every write to `close()`, so a full disk, an exhausted quota, or an unwritable temp directory produced a missing archive that the exporter happily streamed as an empty response. `zip_folder()` now throws when `close()` fails, and `zip()` verifies the archive exists and is non-empty before it is sent
 * `zip_folder()` now detects a failed `ZipArchive::open()`. `open()` returns a non-zero integer error code rather than `false` on failure, so the previous falsy check never fired and every `addFile()` call silently no-op'd
