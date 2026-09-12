@@ -716,4 +716,109 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->expectException( \RuntimeException::class );
 		$jekyll_export->zip_folder( '/path/that/definitely/does/not/exist', $jekyll_export->dir . 'out.zip' );
 	}
+
+	/**
+	 * Test that zip_folder() throws when the archive cannot be written.
+	 *
+	 * ZipArchive defers all writes to close(), so an unwritable destination
+	 * opens successfully and only fails at the end.  Previously that failure
+	 * was discarded and the export continued on to send a zero byte download.
+	 */
+	function test_zip_folder_throws_when_destination_unwritable() {
+		global $jekyll_export;
+
+		file_put_contents( $jekyll_export->dir . 'content.txt', 'content' );
+
+		$this->expectException( \RuntimeException::class );
+		$jekyll_export->zip_folder( $jekyll_export->dir, '/path/that/definitely/does/not/exist/out.zip' );
+	}
+
+	/**
+	 * Test that zip_folder() throws when the archive cannot be opened.
+	 *
+	 * ZipArchive::open() returns a non-zero integer error code (not false) when
+	 * it cannot open the destination, so the failure has to be detected with a
+	 * strict comparison rather than a falsy check.
+	 */
+	function test_zip_folder_throws_when_destination_cannot_be_opened() {
+		global $jekyll_export;
+
+		file_put_contents( $jekyll_export->dir . 'content.txt', 'content' );
+
+		// A directory can never be opened as an archive.
+		$destination = $jekyll_export->dir . 'a-directory';
+		mkdir( $destination );
+
+		$this->expectException( \RuntimeException::class );
+		$jekyll_export->zip_folder( $jekyll_export->dir, $destination );
+	}
+
+	/**
+	 * Test that zip() produces an archive that is actually readable and non-empty.
+	 *
+	 * file_exists() alone returns true for a zero byte file, which is exactly
+	 * the state that reaches the browser as a 0KB download.
+	 */
+	function test_zip_produces_readable_non_empty_archive() {
+		global $jekyll_export;
+
+		file_put_contents( $jekyll_export->dir . 'content.txt', 'content' );
+		$jekyll_export->zip();
+
+		clearstatcache( true, $jekyll_export->zip );
+		$this->assertFileExists( $jekyll_export->zip );
+		$this->assertGreaterThan( 0, filesize( $jekyll_export->zip ), 'Archive should not be zero bytes.' );
+
+		$zip = new ZipArchive();
+		$this->assertTrue( true === $zip->open( $jekyll_export->zip ), 'Archive should open cleanly.' );
+		$this->assertGreaterThan( 0, $zip->numFiles, 'Archive should contain at least one entry.' );
+		$zip->close();
+	}
+
+	/**
+	 * Test that zip() throws when the archive was never written to disk.
+	 */
+	function test_zip_throws_when_archive_missing() {
+		global $jekyll_export;
+
+		$export      = new Jekyll_Export();
+		$export->dir = $jekyll_export->dir;
+		$export->zip = '/path/that/definitely/does/not/exist/out.zip';
+
+		$this->expectException( \RuntimeException::class );
+		$export->zip();
+	}
+
+	/**
+	 * Test that send() throws rather than silently sending an empty body when
+	 * the archive cannot be read.
+	 */
+	function test_send_throws_when_archive_unreadable() {
+		global $jekyll_export;
+
+		$export      = new Jekyll_Export();
+		$export->zip = $jekyll_export->dir . 'does-not-exist.zip';
+
+		$this->expectException( \RuntimeException::class );
+		$export->send();
+	}
+
+	/**
+	 * Test that the temp zip path is randomized so concurrent or crashed
+	 * exports cannot collide on a shared temp directory.
+	 */
+	function test_temp_zip_path_is_randomized() {
+		$first = new Jekyll_Export();
+		$first->init_temp_dir();
+
+		$second = new Jekyll_Export();
+		$second->init_temp_dir();
+
+		$this->assertNotEquals( $first->zip, $second->zip, 'Each export should get its own zip path.' );
+		$this->assertStringEndsWith( '.zip', $first->zip );
+		$this->assertStringContainsString( 'wp-jekyll-', $first->zip );
+
+		$GLOBALS['wp_filesystem']->delete( $first->dir, true );
+		$GLOBALS['wp_filesystem']->delete( $second->dir, true );
+	}
 }
