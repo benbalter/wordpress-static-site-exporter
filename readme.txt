@@ -272,6 +272,17 @@ The custom post type will be exported as a Jekyll collection. You'll need to ini
 
 == Changelog ==
 
+= Unreleased =
+
+* Fixed a zero-byte or unreadable zip download ([#413](https://github.com/benbalter/wordpress-static-site-exporter/issues/413)). `ZipArchive` defers every write to `close()`, so a full disk, an exhausted quota, or an unwritable temp directory produced a missing archive that the exporter happily streamed as an empty response. `zip_folder()` now throws when `close()` fails, and `zip()` verifies the archive exists and is non-empty before it is sent
+* `zip_folder()` now detects a failed `ZipArchive::open()`. `open()` returns a non-zero integer error code rather than `false` on failure, so the previous falsy check never fired and every `addFile()` call silently no-op'd
+* `send()` opens the archive before emitting any headers and throws if it cannot be read, instead of returning silently after the download headers were already sent
+* `send()` disables transparent gzip compression (`zlib.output_compression`) so the `Content-Length` header cannot disagree with the bytes actually written
+* `send()` fails with the offending file and line number when a theme or another plugin has already written to the response (a stray blank line or byte order mark), instead of shipping a corrupt archive
+* The temporary zip now uses the same random suffix as the temporary export directory, so concurrent or previously crashed exports cannot collide on a fixed `wp-jekyll.zip` in a shared temp directory
+* `ob_start()` now wraps the `jekyll_export` action, so output echoed by a third-party hook can no longer be prepended to the archive
+* Skip files that vanish mid-export rather than adding a zip entry with an empty name
+
 = 4.1.0 =
 
 * **Behavior change:** Post revisions are no longer exported by default. Previously `revision` was included in the default post types, which filled the `_drafts/` folder with duplicate copies of every post. To restore the old behavior, re-add `'revision'` via the `jekyll_export_post_types` filter

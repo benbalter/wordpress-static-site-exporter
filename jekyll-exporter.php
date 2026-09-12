@@ -496,8 +496,11 @@ class Jekyll_Export {
 		// Use cryptographically secure randomness for the temp dir name to prevent
 		// a co-located attacker from pre-creating the path (e.g. as a symlink) to
 		// redirect file writes outside the export root.
-		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . wp_generate_password( 12, false ) );
-		$this->zip = $temp_dir . 'wp-jekyll.zip';
+		// The zip shares the suffix so concurrent or crashed exports can never
+		// collide on a fixed filename in a shared temp directory.
+		$suffix    = wp_generate_password( 12, false );
+		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . $suffix );
+		$this->zip = $temp_dir . 'wp-jekyll-' . $suffix . '.zip';
 
 		$wp_filesystem->mkdir( $this->dir );
 		$wp_filesystem->mkdir( $this->dir . '_posts/' );
@@ -574,8 +577,11 @@ class Jekyll_Export {
 
 		try {
 			$ob_level_before = ob_get_level();
-			do_action( 'jekyll_export' );
+
+			// Buffer before firing the action so anything a third-party hook
+			// echoes is discarded rather than prepended to the binary zip.
 			ob_start();
+			do_action( 'jekyll_export' );
 			$this->init_temp_dir();
 			$this->convert_options();
 			$this->convert_posts();
@@ -751,53 +757,129 @@ class Jekyll_Export {
 		$source = realpath( $source );
 
 		$zip = new ZipArchive();
-		if ( ! $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE ) ) {
+
+		// ZipArchive::open() returns true on success or a non-zero integer error
+		// code on failure, so a falsy check never catches an error.
+		$opened = $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE );
+		if ( true !== $opened ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'Cannot open zip archive: %s', $destination ) );
+			throw new \RuntimeException( sprintf( 'Cannot open zip archive %s (error code %d)', $destination, (int) $opened ) );
 		}
 
 		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source ), RecursiveIteratorIterator::SELF_FIRST );
 
 		foreach ( $files as $file ) {
+			$path = (string) $file;
+
 			// Ignore "." and ".." folders.
-			if ( in_array( substr( $file, strrpos( $file, DIRECTORY_SEPARATOR ) + 1 ), array( '.', '..' ), true ) ) {
+			if ( in_array( substr( $path, strrpos( $path, DIRECTORY_SEPARATOR ) + 1 ), array( '.', '..' ), true ) ) {
 				continue;
 			}
 
-			if ( is_dir( $file ) === true ) {
-				$zip->addEmptyDir( substr( realpath( $file ), strlen( $source ) + 1 ) );
-			} elseif ( is_file( $file ) === true ) {
-				$zip->addFile( $file, substr( realpath( $file ), strlen( $source ) + 1 ) );
+			// realpath() returns false for a file that vanished mid-export (or a
+			// broken symlink), which would otherwise produce an empty entry name.
+			$real_file = realpath( $path );
+			if ( false === $real_file ) {
+				continue;
+			}
+
+			$local_name = substr( $real_file, strlen( $source ) + 1 );
+			if ( '' === $local_name ) {
+				continue;
+			}
+
+			if ( is_dir( $real_file ) === true ) {
+				$zip->addEmptyDir( $local_name );
+			} elseif ( is_file( $real_file ) === true ) {
+				$zip->addFile( $real_file, $local_name );
 			}
 		}
 
-		return $zip->close();
+		// Nothing is written to disk until close(), so this is where a full disk,
+		// an exhausted quota, or an unwritable temp directory actually surfaces.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- close() warns on failure; the error is reported as an exception below.
+		$status = @$zip->close();
+		if ( ! $status ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- getStatusString() can warn on an archive that failed to close.
+			$reason = (string) @$zip->getStatusString();
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( sprintf( 'Cannot write zip archive %s: %s', $destination, $reason ) );
+		}
+
+		return $status;
 	}
 
 	/**
 	 * Zip temp dir
+	 *
+	 * @throws \RuntimeException If the archive was not written or is empty.
 	 */
 	public function zip() {
 		$this->zip_folder( $this->dir, $this->zip );
+
+		// The archive only exists once close() has flushed it, and a stale stat
+		// cache would otherwise report the pre-export state of the path.
+		clearstatcache( true, $this->zip );
+		if ( ! file_exists( $this->zip ) || filesize( $this->zip ) < 1 ) {
+			$message = sprintf(
+				'The export archive (%s) is missing or empty. This usually means the server ran out of disk space or the temporary directory quota was exhausted.',
+				$this->zip
+			);
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( $message );
+		}
 	}
 
 	/**
 	 * Send headers and zip file to user
+	 *
+	 * @throws \RuntimeException If output has already been sent or the archive cannot be read.
 	 */
 	public function send() {
+		$is_cli = ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI;
+
+		// If something already wrote to the response, the download would arrive
+		// corrupt no matter what we do; fail loudly with the culprit instead.
+		$sent_file = '';
+		$sent_line = 0;
+		if ( ! $is_cli && headers_sent( $sent_file, $sent_line ) ) {
+			$message = sprintf(
+				'Cannot send the export because output was already sent by %1$s on line %2$d. A theme or another plugin is printing content (often a stray blank line or byte order mark) before the download starts.',
+				$sent_file,
+				$sent_line
+			);
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( $message );
+		}
+
+		// Transparent gzip compression would make Content-Length disagree with the
+		// bytes actually written, which browsers report as a truncated download.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.IniSet.Risky -- Deliberate: transparent compression corrupts the download, and ini_set may be disabled on some hosts.
+		@ini_set( 'zlib.output_compression', 'Off' );
+
+		// Open the file before sending any headers so a read failure can still be
+		// reported as an error page rather than a zero byte download.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Failure is handled explicitly below.
+		$handle = @fopen( $this->zip, 'rb' );
+		if ( false === $handle ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( sprintf( 'The export archive (%s) could not be opened for reading.', $this->zip ) );
+		}
+
+		clearstatcache( true, $this->zip );
+		$size = filesize( $this->zip );
+
 		// Send headers.
 		@header( 'Content-Type: application/zip' );
 		@header( 'Content-Disposition: attachment; filename=jekyll-export.zip' );
-		@header( 'Content-Length: ' . filesize( $this->zip ) );
+		if ( false !== $size ) {
+			@header( 'Content-Length: ' . $size );
+		}
 
 		// Stream the zip in chunks to avoid loading the entire file into
 		// memory (which would defeat the point of having a memory_limit
 		// pre-flight check for large exports).
 		flush();
-		$handle = fopen( $this->zip, 'rb' );
-		if ( false === $handle ) {
-			return;
-		}
 		while ( ! feof( $handle ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary zip content; escaping would corrupt it.
 			echo fread( $handle, 8192 );

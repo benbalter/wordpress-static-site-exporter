@@ -460,9 +460,8 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertTrue( file_exists( $jekyll_export->zip ) );
 
 		$temp_dir = get_temp_dir() . 'jekyll-export-extract';
-		array_map( 'unlink', glob( "$temp_dir/*.*" ) );
 		if ( file_exists( $temp_dir ) ) {
-			delete_dir( $temp_dir );
+			$GLOBALS['wp_filesystem']->delete( $temp_dir, true );
 		}
 
 		$zip = new ZipArchive();
