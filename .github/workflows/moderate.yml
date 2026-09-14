@@ -24,6 +24,6 @@ jobs:
       discussions: write
       models: read
     steps:
-      - uses: benbalter/ai-community-moderator@main
+      - uses: benbalter/ai-community-moderator@3a78a096d49eb44c5a1d6baabecf98613e2d0f53 # main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
