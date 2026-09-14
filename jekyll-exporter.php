@@ -831,6 +831,19 @@ class Jekyll_Export {
 	}
 
 	/**
+	 * Whether the archive stream needs the output buffers torn down first.
+	 *
+	 * Web requests do; under WP-CLI the caller owns stdout and any buffer
+	 * around it, the same carve-out the headers_sent() check in send() makes.
+	 * Split out from send() so tests can drive the web-request path.
+	 *
+	 * @return bool
+	 */
+	protected function should_discard_output_buffers() {
+		return ! ( ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI );
+	}
+
+	/**
 	 * Discard every output buffer that is still open.
 	 *
 	 * Called immediately before the archive is streamed.  A buffer left open by
@@ -897,7 +910,7 @@ class Jekyll_Export {
 
 		// Nothing below this point may be buffered or rewritten.  Skipped under
 		// WP-CLI, where the caller owns stdout and any buffer around it.
-		if ( ! $is_cli ) {
+		if ( $this->should_discard_output_buffers() ) {
 			$this->discard_output_buffers();
 		}
 

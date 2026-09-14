@@ -856,4 +856,101 @@ class EdgeCasesTest extends WP_UnitTestCase {
 			ob_start();
 		}
 	}
+
+	/**
+	 * Test that send() tears down the output buffers on a web request, after
+	 * the archive has been opened.
+	 *
+	 * Under PHPUnit PHP_SAPI is "cli", so the shipped path is only reachable by
+	 * overriding the seam.  Without this, a regression that dropped the
+	 * teardown call -- or moved it above the fopen(), where a read failure
+	 * could no longer be rendered as an error page -- would still go green.
+	 */
+	function test_send_discards_output_buffers_on_a_web_request() {
+		global $jekyll_export;
+
+		file_put_contents( $jekyll_export->dir . 'content.txt', 'content' );
+		$jekyll_export->zip();
+
+		$spy      = new Spying_Jekyll_Export();
+		$spy->dir = $jekyll_export->dir;
+		$spy->zip = $jekyll_export->zip;
+
+		$baseline = ob_get_level();
+		ob_start();
+		$output = ob_get_clean();
+
+		ob_start();
+		$spy->send();
+		$captured = ob_get_clean();
+
+		$this->assertSame( 1, $spy->discard_calls, 'send() should tear the buffers down exactly once.' );
+		$this->assertTrue( $spy->handle_was_open, 'Teardown must happen after the archive is opened.' );
+		$this->assertGreaterThan( $baseline, $spy->level_at_discard, 'The stray buffer should still be open at teardown.' );
+		$this->assertSame( file_get_contents( $jekyll_export->zip ), $captured, 'send() should stream the archive verbatim.' );
+
+		unset( $output );
+
+		while ( ob_get_level() > $baseline ) {
+			ob_end_clean();
+		}
+	}
+}
+
+/**
+ * Test double that forces the web-request branch of send() and records how the
+ * buffer teardown was invoked, without letting it destroy PHPUnit's buffers.
+ */
+class Spying_Jekyll_Export extends Jekyll_Export {
+
+	/**
+	 * How many times discard_output_buffers() was called.
+	 *
+	 * @var int
+	 */
+	public $discard_calls = 0;
+
+	/**
+	 * ob_get_level() at the moment of the call.
+	 *
+	 * @var int
+	 */
+	public $level_at_discard = 0;
+
+	/**
+	 * Whether the archive handle was already open when teardown ran.
+	 *
+	 * @var bool
+	 */
+	public $handle_was_open = false;
+
+	/**
+	 * Force the web-request branch even though PHP_SAPI is "cli" under PHPUnit.
+	 *
+	 * @return bool
+	 */
+	protected function should_discard_output_buffers() {
+		return true;
+	}
+
+	/**
+	 * Record the call instead of actually tearing PHPUnit's buffers down.
+	 *
+	 * @return void
+	 */
+	public function discard_output_buffers() {
+		++$this->discard_calls;
+		$this->level_at_discard = ob_get_level();
+
+		// send() opens the archive before tearing down so that a read failure
+		// is still reportable as an admin error page.  An open read handle on
+		// the zip is the observable evidence of that ordering.
+		foreach ( get_resources( 'stream' ) as $resource ) {
+			$meta = stream_get_meta_data( $resource );
+			if ( isset( $meta['uri'] ) && $meta['uri'] === $this->zip ) {
+				$this->handle_was_open = true;
+				break;
+			}
+		}
+	}
 }
