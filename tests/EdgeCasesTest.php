@@ -821,4 +821,39 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$GLOBALS['wp_filesystem']->delete( $first->dir, true );
 		$GLOBALS['wp_filesystem']->delete( $second->dir, true );
 	}
+
+	/**
+	 * Test that discard_output_buffers() closes buffers left open by a theme
+	 * or another plugin.
+	 *
+	 * A buffer that is still open when the archive is streamed either rewrites
+	 * the binary content through its callback (an HTML minifier, a CDN
+	 * rewriter) or, opened with no chunk size, holds the whole archive in
+	 * memory until the export dies mid-stream -- which reaches the browser as a
+	 * truncated download rather than an error page.
+	 */
+	function test_discard_output_buffers_closes_open_buffers() {
+		global $jekyll_export;
+
+		$baseline = ob_get_level();
+
+		ob_start(
+			static function ( $buffer ) {
+				return str_replace( 'PK', 'XX', $buffer );
+			}
+		);
+		ob_start();
+		echo 'markup that must never reach the archive';
+
+		$this->assertGreaterThan( $baseline, ob_get_level() );
+
+		$jekyll_export->discard_output_buffers();
+
+		$this->assertSame( 0, ob_get_level(), 'Every output buffer should be closed before streaming.' );
+
+		// Restore whatever level the test runner was at.
+		while ( ob_get_level() < $baseline ) {
+			ob_start();
+		}
+	}
 }
