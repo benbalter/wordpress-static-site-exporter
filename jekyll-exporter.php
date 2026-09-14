@@ -831,6 +831,58 @@ class Jekyll_Export {
 	}
 
 	/**
+	 * Whether the archive stream needs the output buffers torn down first.
+	 *
+	 * Web requests do; under WP-CLI the caller owns stdout and any buffer
+	 * around it, the same carve-out the headers_sent() check in send() makes.
+	 * Split out from send() so tests can drive the web-request path.
+	 *
+	 * @return bool
+	 */
+	protected function should_discard_output_buffers() {
+		return ! ( ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI );
+	}
+
+	/**
+	 * Discard every output buffer that is still open.
+	 *
+	 * Called immediately before the archive is streamed.  A buffer left open by
+	 * a theme or another plugin is a problem in two ways: a buffer with a
+	 * callback (an HTML minifier, a CDN rewriter) runs the binary archive
+	 * through that callback and corrupts it, and a buffer opened without a
+	 * chunk size never auto-flushes, so it holds the entire archive in memory
+	 * until the export dies mid-stream -- which reaches the browser as a
+	 * truncated download rather than an error page.
+	 *
+	 * Buffers are discarded rather than flushed: whatever they hold is admin
+	 * markup that has no business being inside a zip file.
+	 *
+	 * Only called for web requests.  Under WP-CLI the caller owns stdout and
+	 * its own buffers, the same reason the headers_sent() check in send() is
+	 * skipped there.
+	 *
+	 * @return void
+	 */
+	public function discard_output_buffers() {
+		$level = ob_get_level();
+
+		while ( $level > 0 ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A non-removable handler emits a notice; the loop exits on the level check below.
+			@ob_end_clean();
+
+			$remaining = ob_get_level();
+
+			// Some handlers (notably zlib output compression) refuse to be
+			// removed.  Stop rather than spin forever.
+			if ( $remaining >= $level ) {
+				break;
+			}
+
+			$level = $remaining;
+		}
+	}
+
+	/**
 	 * Send headers and zip file to user
 	 *
 	 * @throws \RuntimeException If output has already been sent or the archive cannot be read.
@@ -838,11 +890,40 @@ class Jekyll_Export {
 	public function send() {
 		$is_cli = ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI;
 
+		// Transparent gzip compression would make Content-Length disagree with the
+		// bytes actually written, which browsers report as a truncated download.
+		// Disabled first, so the buffer it installs is gone before the teardown
+		// below counts what is still open.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.IniSet.Risky -- Deliberate: transparent compression corrupts the download, and ini_set may be disabled on some hosts.
+		@ini_set( 'zlib.output_compression', 'Off' );
+
+		// Open the file before sending any headers so a read failure can still be
+		// reported as an error page rather than a zero byte download.  This runs
+		// before the buffers are torn down so the failure can still be rendered
+		// as an admin error page.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Failure is handled explicitly below.
+		$handle = @fopen( $this->zip, 'rb' );
+		if ( false === $handle ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( sprintf( 'The export archive (%s) could not be opened for reading.', $this->zip ) );
+		}
+
+		// Nothing below this point may be buffered or rewritten.  Skipped under
+		// WP-CLI, where the caller owns stdout and any buffer around it.
+		if ( $this->should_discard_output_buffers() ) {
+			$this->discard_output_buffers();
+		}
+
 		// If something already wrote to the response, the download would arrive
 		// corrupt no matter what we do; fail loudly with the culprit instead.
+		// Checked after the teardown above, so content that was merely buffered
+		// (and has now been discarded) is not mistaken for output already on the
+		// wire.
 		$sent_file = '';
 		$sent_line = 0;
 		if ( ! $is_cli && headers_sent( $sent_file, $sent_line ) ) {
+			fclose( $handle );
+
 			$message = sprintf(
 				'Cannot send the export because output was already sent by %1$s on line %2$d. A theme or another plugin is printing content (often a stray blank line or byte order mark) before the download starts.',
 				$sent_file,
@@ -850,20 +931,6 @@ class Jekyll_Export {
 			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
 			throw new \RuntimeException( $message );
-		}
-
-		// Transparent gzip compression would make Content-Length disagree with the
-		// bytes actually written, which browsers report as a truncated download.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.IniSet.Risky -- Deliberate: transparent compression corrupts the download, and ini_set may be disabled on some hosts.
-		@ini_set( 'zlib.output_compression', 'Off' );
-
-		// Open the file before sending any headers so a read failure can still be
-		// reported as an error page rather than a zero byte download.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Failure is handled explicitly below.
-		$handle = @fopen( $this->zip, 'rb' );
-		if ( false === $handle ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'The export archive (%s) could not be opened for reading.', $this->zip ) );
 		}
 
 		clearstatcache( true, $this->zip );
