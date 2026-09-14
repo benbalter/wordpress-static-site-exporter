@@ -32,10 +32,10 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
         
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Setup PHP
-      uses: shivammathur/setup-php@v2
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
       with:
         php-version: ${{ matrix.php_version }}
         extensions: mysqli
@@ -44,7 +44,7 @@ jobs:
 
     - name: Cache Composer packages
       id: composer-cache
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ matrix.php_version }}-${{ hashFiles('**/composer.json') }}
@@ -69,7 +69,7 @@ jobs:
         WP_MULTISITE: ${{ matrix.wp_multisite }}
 
     - name: Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: coverage.xml
@@ -85,17 +85,17 @@ jobs:
       matrix:
         php_version: [8.3]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php_version }}
           extensions: mysqli
 
       - name: Cache Composer packages
         id: composer-cache
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ matrix.php_version }}-${{ hashFiles('**/composer.json') }}
@@ -111,15 +111,15 @@ jobs:
   phpstan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.4'
 
       - name: Cache Composer packages
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: vendor
           key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.json') }}
@@ -136,7 +136,7 @@ jobs:
     name: Verify vendor autoload files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Verify no dev dependencies in committed autoload files
         run: |
