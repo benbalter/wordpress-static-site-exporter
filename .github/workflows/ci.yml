@@ -44,7 +44,7 @@ jobs:
 
     - name: Cache Composer packages
       id: composer-cache
-      uses: actions/cache@v5
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ matrix.php_version }}-${{ hashFiles('**/composer.json') }}
@@ -95,7 +95,7 @@ jobs:
 
       - name: Cache Composer packages
         id: composer-cache
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ matrix.php_version }}-${{ hashFiles('**/composer.json') }}
@@ -119,7 +119,7 @@ jobs:
           php-version: '8.4'
 
       - name: Cache Composer packages
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: vendor
           key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.json') }}
