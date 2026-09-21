@@ -19,7 +19,7 @@ jobs:
         run: composer install --no-dev --no-interaction
 
       - name: Docker compose
-        uses: isbang/compose-action@v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
         with:
           compose-file: './docker-compose.yml'
 
