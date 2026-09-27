@@ -662,6 +662,84 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that trashed posts and auto-drafts are not exported.
+	 */
+	function test_get_posts_excludes_trash_and_auto_drafts() {
+		global $jekyll_export;
+
+		$ids = array();
+		foreach ( array( 'publish', 'draft', 'pending', 'private', 'trash', 'auto-draft' ) as $status ) {
+			$ids[ $status ] = wp_insert_post(
+				array(
+					'post_title'  => 'Status ' . $status,
+					'post_status' => $status,
+					'post_author' => self::$author_id,
+				)
+			);
+		}
+
+		$posts = $jekyll_export->get_posts();
+
+		foreach ( array( 'publish', 'draft', 'pending', 'private' ) as $status ) {
+			$this->assertContains( $ids[ $status ], $posts, "$status post should be exported" );
+		}
+		$this->assertNotContains( $ids['trash'], $posts, 'Trashed post should not be exported' );
+		$this->assertNotContains( $ids['auto-draft'], $posts, 'Auto-draft should not be exported' );
+	}
+
+	/**
+	 * Test that a taxonomy filter does not pull in posts from child terms and
+	 * returns every matching post, not just the first page.
+	 */
+	function test_get_posts_taxonomy_filter_excludes_child_terms() {
+		global $jekyll_export;
+
+		$parent = wp_insert_term( 'Parent Cat', 'category', array( 'slug' => 'parent-cat' ) );
+		$child  = wp_insert_term(
+			'Child Cat',
+			'category',
+			array(
+				'slug'   => 'child-cat',
+				'parent' => $parent['term_id'],
+			)
+		);
+
+		$in_parent = array();
+		for ( $i = 0; $i < 12; $i++ ) {
+			$in_parent[] = wp_insert_post(
+				array(
+					'post_title'    => 'In parent ' . $i,
+					'post_status'   => 'publish',
+					'post_author'   => self::$author_id,
+					'post_category' => array( $parent['term_id'] ),
+				)
+			);
+		}
+		$in_child = wp_insert_post(
+			array(
+				'post_title'    => 'In child',
+				'post_status'   => 'publish',
+				'post_author'   => self::$author_id,
+				'post_category' => array( $child['term_id'] ),
+			)
+		);
+
+		$filter = function () {
+			return array( 'category' => array( 'parent-cat' ) );
+		};
+		add_filter( 'jekyll_export_taxonomy_filters', $filter );
+
+		try {
+			$posts = $jekyll_export->get_posts();
+		} finally {
+			remove_filter( 'jekyll_export_taxonomy_filters', $filter );
+		}
+
+		$this->assertSame( $in_parent, $posts );
+		$this->assertNotContains( $in_child, $posts );
+	}
+
+	/**
 	 * Test that revisions are excluded from the export by default, but can be
 	 * restored via the jekyll_export_post_types filter.
 	 */
