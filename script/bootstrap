@@ -1,15 +1,6 @@
 #!/bin/sh
+# Install development dependencies (PHPUnit, PHPCS, PHPStan) into vendor/ and bin/.
 
 set -e
 
-composer install --dev --no-interaction
-
-export PATH="$TRAVIS_BUILD_DIR/vendor/bin:./bin:$PATH"
-
-composer global require "phpunit/phpunit=5.7.*"
-composer global require "squizlabs/php_codesniffer=*"
-composer global require wp-coding-standards/wpcs
-
-phpcs --config-set installed_paths "$TRAVIS_BUILD_DIR/vendor/wp-coding-standards/wpcs"
-
-npm install --global wp-pot-cli
+composer install --no-interaction

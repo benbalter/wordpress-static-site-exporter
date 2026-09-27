@@ -2,6 +2,10 @@
 <ruleset name="WordPress Coding Standards for Plugins">
 	<description>Generally-applicable sniffs for WordPress plugins</description>
 
+	<file>jekyll-exporter.php</file>
+	<file>jekyll-export-cli.php</file>
+	<file>lib</file>
+
 	<rule ref="WordPress-Core">
 		<exclude name="WordPress.PHP.NoSilencedErrors.Discouraged" />
 		<exclude name="WordPress.Security.NonceVerification.Recommended" />

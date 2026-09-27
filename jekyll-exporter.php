@@ -16,6 +16,8 @@
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
+ * Requires at least: 6.4
+ * Requires PHP: 8.2
  * License:     GPL-3.0+
  * License URI: http://www.gnu.org/licenses/gpl-3.0.txt
  *
@@ -35,8 +37,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+// Bail without loading anything on an unsupported PHP version. wp_die() here would
+// take down the entire site (front end included) rather than just this plugin.
 if ( version_compare( PHP_VERSION, '8.2', '<' ) ) {
-	wp_die( 'Jekyll Export requires PHP 8.2 or later' );
+	add_action(
+		'admin_notices',
+		function () {
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'Static Site Exporter requires PHP 8.2 or later and has been disabled.', 'jekyll-exporter' ) . '</p></div>';
+		}
+	);
+	return;
 }
 
 require_once __DIR__ . '/lib/cli.php';
@@ -170,11 +180,6 @@ class Jekyll_Export {
 	public function get_posts() {
 		global $wpdb;
 
-		$posts = wp_cache_get( 'jekyll_export_posts' );
-		if ( $posts ) {
-			return $posts;
-		}
-
 		// Revisions are excluded by default (they would fill `_drafts/` with duplicate copies
 		// of every post). Re-add 'revision' via the `jekyll_export_post_types` filter if needed.
 		$post_types = apply_filters( 'jekyll_export_post_types', array( 'post', 'page' ) );
@@ -222,10 +227,7 @@ class Jekyll_Export {
 			$posts = $wpdb->get_col( $wpdb->prepare( $query, ...$post_types ) );
 		}
 
-		$posts = array_map( 'intval', $posts );
-
-		wp_cache_set( 'jekyll_export_posts', $posts );
-		return $posts;
+		return array_map( 'intval', $posts );
 	}
 
 	/**
@@ -335,21 +337,27 @@ class Jekyll_Export {
 	 * @return String the content with localized URLs
 	 */
 	public function localize_urls( $content ) {
-		// Get the site URL with both http and https versions.
-		$site_url_http  = set_url_scheme( get_site_url(), 'http' );
-		$site_url_https = set_url_scheme( get_site_url(), 'https' );
-
-		// Replace absolute URLs with relative paths for both http and https.
-		// This handles URLs like: http://example.org/wp-content/uploads/image.jpg
-		// Result: /wp-content/uploads/image.jpg
-		// Process the longer URL first to avoid partial replacements.
-		if ( strlen( $site_url_https ) >= strlen( $site_url_http ) ) {
-			$content = str_replace( $site_url_https, '', $content );
-			$content = str_replace( $site_url_http, '', $content );
-		} else {
-			$content = str_replace( $site_url_http, '', $content );
-			$content = str_replace( $site_url_https, '', $content );
+		// Strip both the site URL (where WordPress and the uploads live) and the home
+		// URL (what permalinks use); they differ when WordPress is installed in a
+		// subdirectory.  Both schemes are stripped, so http://example.org/wp-content/uploads/image.jpg
+		// becomes /wp-content/uploads/image.jpg.
+		$urls = array();
+		foreach ( array( get_site_url(), home_url() ) as $url ) {
+			$urls[] = set_url_scheme( $url, 'http' );
+			$urls[] = set_url_scheme( $url, 'https' );
 		}
+		$urls = array_unique( $urls );
+
+		// Longest first, so a subdirectory install's site URL is not left
+		// half-replaced by the shorter home URL it starts with.
+		usort(
+			$urls,
+			function ( $a, $b ) {
+				return strlen( $b ) - strlen( $a );
+			}
+		);
+
+		$content = str_replace( $urls, '', $content );
 
 		return apply_filters( 'jekyll_export_localized_urls', $content );
 	}
@@ -731,7 +739,7 @@ class Jekyll_Export {
 		foreach ( array_unique( $option_keys ) as $key ) {
 			$value = get_option( $key, $missing_option );
 			if ( $missing_option !== $value ) {
-				$options[ $key ] = maybe_unserialize( $value );
+				$options[ $key ] = $value;
 			}
 		}
 
@@ -884,7 +892,16 @@ class Jekyll_Export {
 	 * @return bool
 	 */
 	protected function should_discard_output_buffers() {
-		return ! ( ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI );
+		return ! $this->is_cli();
+	}
+
+	/**
+	 * Whether the export is running from the command line (WP-CLI or php-cli).
+	 *
+	 * @return bool
+	 */
+	protected function is_cli() {
+		return ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI;
 	}
 
 	/**
@@ -932,8 +949,6 @@ class Jekyll_Export {
 	 * @throws \RuntimeException If output has already been sent or the archive cannot be read.
 	 */
 	public function send() {
-		$is_cli = ( defined( 'WP_CLI' ) && WP_CLI ) || 'cli' === PHP_SAPI;
-
 		// Transparent gzip compression would make Content-Length disagree with the
 		// bytes actually written, which browsers report as a truncated download.
 		// Disabled first, so the buffer it installs is gone before the teardown
@@ -965,7 +980,7 @@ class Jekyll_Export {
 		// wire.
 		$sent_file = '';
 		$sent_line = 0;
-		if ( ! $is_cli && headers_sent( $sent_file, $sent_line ) ) {
+		if ( ! $this->is_cli() && headers_sent( $sent_file, $sent_line ) ) {
 			fclose( $handle );
 
 			$message = sprintf(

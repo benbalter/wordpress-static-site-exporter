@@ -16,7 +16,6 @@ vendor/**/*.zip~
 vendor/**/*.zip*
 bin/*
 coverage.xml
-composer.lock
 
 # Files not permitted in WP plugin directory
 .devcontainer/welcome.sh

@@ -1,3 +1,4 @@
 #!/bin/sh
+# Files to fix are listed in phpcs.ruleset.xml.
 
-phpcbf --standard=phpcs.ruleset.xml *.php */**.php
+bin/phpcbf --standard=phpcs.ruleset.xml

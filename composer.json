@@ -25,7 +25,7 @@
     "vendor-dir": "vendor",
     "platform-check": false,
     "platform": {
-      "php": "8.3.0"
+      "php": "8.2.0"
     },
     "allow-plugins": {
       "dealerdirect/phpcodesniffer-composer-installer": true
