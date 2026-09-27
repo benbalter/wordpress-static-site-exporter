@@ -318,14 +318,13 @@ class EdgeCasesTest extends WP_UnitTestCase {
 
 			$this->assertTrue( $result );
 
-			// Cleanup.
+			// Remove the link itself first: a recursive delete would follow it.
 			@unlink( $temp_dir . '/link.txt' );
 		}
 
 		// Cleanup.
-		@unlink( $target_dir . '/target.txt' );
-		@rmdir( $target_dir );
-		@rmdir( $temp_dir );
+		$GLOBALS['wp_filesystem']->delete( $target_dir, true );
+		$GLOBALS['wp_filesystem']->delete( $temp_dir, true );
 	}
 
 	/**
@@ -383,12 +382,11 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->assertEquals( 'content 1', file_get_contents( $target_dir . '/file1.txt' ) );
 		$this->assertEquals( 'content 2', file_get_contents( $target_dir . '/file2.txt' ) );
 
-		// Cleanup test directories.
-		@unlink( $target_dir . '/file1.txt' );
-		@unlink( $target_dir . '/file2.txt' );
-		@rmdir( $target_dir );
+		// Cleanup test directories. Remove the link itself first: a recursive
+		// delete would follow it into the target directory.
 		@unlink( $source_dir . '/uploads' );
-		@rmdir( $source_dir );
+		$GLOBALS['wp_filesystem']->delete( $source_dir, true );
+		$GLOBALS['wp_filesystem']->delete( $target_dir, true );
 
 		// Reinitialize temp dir for other tests.
 		$jekyll_export->init_temp_dir();
@@ -534,8 +532,7 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->assertFalse( has_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ) ) );
 		$this->assertFalse( has_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ) ) );
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-		@unlink( $destination );
+		$GLOBALS['wp_filesystem']->delete( $destination );
 	}
 
 	/**

@@ -158,7 +158,9 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		global $jekyll_export;
 		$jekyll_export->cleanup();
 		$upload_dir = wp_upload_dir();
-		@array_map( 'unlink', glob( $upload_dir['basedir'] . '/*' ) );
+		foreach ( (array) glob( $upload_dir['basedir'] . '/*' ) as $path ) {
+			$GLOBALS['wp_filesystem']->delete( $path, true );
+		}
 	}
 
 	/**
@@ -459,18 +461,10 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$jekyll_export->zip();
 		$this->assertTrue( file_exists( $jekyll_export->zip ) );
 
-		$temp_dir = get_temp_dir() . 'jekyll-export-extract';
-		if ( file_exists( $temp_dir ) ) {
-			$GLOBALS['wp_filesystem']->delete( $temp_dir, true );
-		}
-
 		$zip = new ZipArchive();
-		$zip->open( $jekyll_export->zip );
-		$zip->extractTo( $temp_dir );
+		$this->assertTrue( $zip->open( $jekyll_export->zip ) );
+		$this->assertSame( 'bar', $zip->getFromName( 'foo.txt' ) );
 		$zip->close();
-
-		$this->assertTrue( file_exists( $temp_dir . '/foo.txt' ) );
-		$this->assertEquals( 'bar', file_get_contents( $temp_dir . '/foo.txt' ) );
 	}
 
 	/**
@@ -593,16 +587,10 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertTrue( $result );
 		$this->assertTrue( file_exists( $zip_file ) );
 
-		// Extract and verify.
-		$extract_dir = $jekyll_export->dir . '/extract';
-		mkdir( $extract_dir );
 		$zip = new ZipArchive();
-		$zip->open( $zip_file );
-		$zip->extractTo( $extract_dir );
+		$this->assertTrue( $zip->open( $zip_file ) );
+		$this->assertSame( 'nested content', $zip->getFromName( 'deep/path/test.txt' ) );
 		$zip->close();
-
-		$this->assertTrue( file_exists( $extract_dir . '/deep/path/test.txt' ) );
-		$this->assertEquals( 'nested content', file_get_contents( $extract_dir . '/deep/path/test.txt' ) );
 	}
 
 	/**
@@ -1014,8 +1002,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertFalse( file_exists( $jekyll_export->dir . '/copied/test.txt' ) );
 
 		// Cleanup.
-		@unlink( $test_dir . 'test.txt' );
-		@rmdir( $test_dir );
+		$GLOBALS['wp_filesystem']->delete( $test_dir, true );
 	}
 
 	/**
@@ -1465,8 +1452,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 			$this->assertFileDoesNotExist( $jekyll_export->zip, 'Temporary archive should be cleaned up' );
 		} finally {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-			@unlink( $destination );
+			$GLOBALS['wp_filesystem']->delete( $destination );
 		}
 	}
 
