@@ -320,12 +320,59 @@ class Jekyll_Export {
 	}
 
 	/**
-	 * Localize URLs in content to use relative paths instead of absolute URLs.
+	 * Localize URLs in HTML content to use relative paths instead of absolute URLs.
+	 *
+	 * Only link and media URLs (`href`, `src`, and each `srcset` candidate) are
+	 * rewritten, so http://example.org/wp-content/uploads/image.jpg becomes
+	 * /wp-content/uploads/image.jpg while URLs in text, code samples, and query
+	 * strings are left alone.
+	 *
+	 * @param String $content the HTML content to localize.
+	 * @return String the content with localized URLs
+	 */
+	public function localize_urls( $content ) {
+		$tags = new WP_HTML_Tag_Processor( (string) $content );
+
+		while ( $tags->next_tag() ) {
+			foreach ( array( 'href', 'src' ) as $attribute ) {
+				$value = $tags->get_attribute( $attribute );
+				if ( ! is_string( $value ) ) {
+					continue;
+				}
+
+				$relative = $this->make_url_relative( $value );
+				if ( $relative !== $value ) {
+					$tags->set_attribute( $attribute, $relative );
+				}
+			}
+
+			$srcset = $tags->get_attribute( 'srcset' );
+			if ( is_string( $srcset ) ) {
+				// Each candidate is a URL, optionally followed by a descriptor.
+				$relative = preg_replace_callback(
+					'/(^|,)(\s*)(\S+)/',
+					function ( $matches ) {
+						return $matches[1] . $matches[2] . $this->make_url_relative( $matches[3] );
+					},
+					$srcset
+				);
+				if ( $relative !== $srcset ) {
+					$tags->set_attribute( 'srcset', $relative );
+				}
+			}
+		}
+
+		return apply_filters( 'jekyll_export_localized_urls', $tags->get_updated_html() );
+	}
+
+	/**
+	 * Localize every occurrence of the site's URLs in content that isn't parsed
+	 * as HTML (Jetpack Markdown source and the raw-HTML fallback).
 	 *
 	 * @param String $content the content to localize.
 	 * @return String the content with localized URLs
 	 */
-	public function localize_urls( $content ) {
+	protected function localize_urls_in_text( $content ) {
 		// Both schemes are stripped, so http://example.org/wp-content/uploads/image.jpg
 		// becomes /wp-content/uploads/image.jpg.
 		$content = str_replace( $this->get_local_urls(), '', $content );
@@ -408,15 +455,15 @@ class Jekyll_Export {
 				// jetpack markdown is available so just return it.
 				$content = apply_filters( 'edit_post_content', $post->post_content, $post->ID );
 				// Localize URLs in Jetpack markdown content.
-				$content = $this->localize_urls( $content );
+				$content = $this->localize_urls_in_text( $content );
 
 				return $content;
 			}
 		}
 
-		$content = get_the_content( null, false, $post );
+		$html = get_the_content( null, false, $post );
 		// Localize URLs before converting to Markdown.
-		$content = $this->localize_urls( $content );
+		$content = $this->localize_urls( $html );
 
 		// Reuse converter instance to avoid recreating it for each post.
 		static $default_converter = null;
@@ -442,12 +489,12 @@ class Jekyll_Export {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
 			}
-			return $this->html_fallback( $content );
+			return $this->html_fallback( $html );
 		}
 
 		if ( strpos( $markdown, '[]: ' ) !== false ) {
 			// faulty links; return plain HTML.
-			return $this->html_fallback( $content );
+			return $this->html_fallback( $html );
 		}
 
 		$markdown = apply_filters( 'jekyll_export_markdown', $markdown );
@@ -458,10 +505,11 @@ class Jekyll_Export {
 	/**
 	 * Apply the raw-HTML fallback filters when Markdown conversion is skipped or fails.
 	 *
-	 * @param string $content the raw HTML content.
+	 * @param string $content the raw HTML content, before URL localization.
 	 * @return string the filtered fallback content.
 	 */
 	private function html_fallback( $content ) {
+		$content = $this->localize_urls_in_text( $content );
 		$content = apply_filters( 'jekyll_export_html', $content );
 		return apply_filters( 'jekyll_export_content', $content );
 	}

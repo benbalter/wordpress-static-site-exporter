@@ -1245,6 +1245,28 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that localize_urls rewrites href, src, and srcset but leaves URLs in
+	 * text, code, and query strings alone.
+	 */
+	function test_localize_urls_only_rewrites_url_attributes() {
+		global $jekyll_export;
+
+		$content = '<p>See http://example.org/text/ and <code>http://example.org/code</code>.</p>'
+			. '<a href="http://example.org/?redirect=http://example.org/x">nested</a>'
+			. '<img src="http://example.org/a.png" srcset="http://example.org/a.png 1x, https://example.org/a@2x.png 2x, https://cdn.example.com/a.png 3x">'
+			. '<a href="http://example.org.evil.com/">lookalike</a>';
+
+		$result = $jekyll_export->localize_urls( $content );
+
+		$this->assertStringContainsString( 'See http://example.org/text/', $result );
+		$this->assertStringContainsString( '<code>http://example.org/code</code>', $result );
+		$this->assertStringContainsString( 'href="/?redirect=http://example.org/x"', $result );
+		$this->assertStringContainsString( 'src="/a.png"', $result );
+		$this->assertStringContainsString( 'srcset="/a.png 1x, /a@2x.png 2x, https://cdn.example.com/a.png 3x"', $result );
+		$this->assertStringContainsString( 'href="http://example.org.evil.com/"', $result );
+	}
+
+	/**
 	 * Test that localize_urls strips both the home and site URLs when WordPress
 	 * is installed in a subdirectory.
 	 */
