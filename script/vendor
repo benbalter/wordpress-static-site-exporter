@@ -1,7 +1,8 @@
 #!/bin/sh
+# Rebuild the committed vendor/ with runtime dependencies only, from composer.lock.
+# Run script/bootstrap afterwards to restore the development dependencies.
 
 set -e
 
 rm -rf vendor
-rm -rf composer.lock
-composer install --no-dev
+composer install --no-dev --no-interaction

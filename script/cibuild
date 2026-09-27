@@ -2,10 +2,11 @@
 
 set -e
 
-export PATH="$TRAVIS_BUILD_DIR/vendor/bin:./bin:$PATH"
-
 echo "Running unit tests..."
 script/cibuild-phpunit
 
-echo "Running Style checks..."
+echo "Running style checks..."
 script/cibuild-phpcs
+
+echo "Running static analysis..."
+script/cibuild-phpstan
