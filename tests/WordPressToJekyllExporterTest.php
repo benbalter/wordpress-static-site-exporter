@@ -1295,6 +1295,31 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that "[]: " in a code sample no longer forces the raw-HTML fallback.
+	 *
+	 * The converter escapes brackets in prose, so the removed guard only ever
+	 * matched unescaped code and pre content.
+	 */
+	function test_convert_content_with_empty_reference_in_code() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Literal Reference',
+				'post_content' => '<p>Code <code>[]: x</code> with <strong>bold</strong></p>',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		$result = $jekyll_export->convert_content( get_post( $post_id ) );
+
+		$this->assertStringContainsString( '`[]: x`', $result );
+		$this->assertStringContainsString( '**bold**', $result );
+		$this->assertStringNotContainsString( '<p>', $result );
+	}
+
+	/**
 	 * Test that convert_content localizes URLs in HTML
 	 */
 	function test_convert_content_localizes_urls() {

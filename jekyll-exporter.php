@@ -492,11 +492,6 @@ class Jekyll_Export {
 			return $this->html_fallback( $html );
 		}
 
-		if ( strpos( $markdown, '[]: ' ) !== false ) {
-			// faulty links; return plain HTML.
-			return $this->html_fallback( $html );
-		}
-
 		$markdown = apply_filters( 'jekyll_export_markdown', $markdown );
 		$markdown = apply_filters( 'jekyll_export_content', $markdown );
 		return $markdown;
