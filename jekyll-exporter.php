@@ -787,7 +787,9 @@ class Jekyll_Export {
 			$filename = '_' . get_post_type( $post ) . 's/' . gmdate( 'Y-m-d', strtotime( $post->post_date ) ) . '-' . sanitize_file_name( $post->post_name ) . '.md';
 		}
 
-		$wp_filesystem->mkdir( $this->dir . dirname( $filename ) );
+		// A nested page can be written before its parent, so create every missing
+		// directory in the path, not just the last one.
+		wp_mkdir_p( $this->dir . dirname( $filename ) );
 		$wp_filesystem->put_contents( $this->dir . $filename, $output );
 	}
 
@@ -1178,7 +1180,7 @@ class Jekyll_Export {
 
 		// Make destination directory.
 		if ( ! is_dir( $dest ) ) {
-			$wp_filesystem->mkdir( $dest );
+			wp_mkdir_p( $dest );
 		}
 
 		// Use scandir instead of dir() for better performance.

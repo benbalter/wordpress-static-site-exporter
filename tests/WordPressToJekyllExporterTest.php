@@ -843,6 +843,47 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that write creates every missing directory for a nested page that is
+	 * written before its ancestors.
+	 */
+	function test_write_grandchild_before_parent() {
+		global $jekyll_export;
+
+		$parent_id = wp_insert_post(
+			array(
+				'post_name'   => 'ancestor',
+				'post_title'  => 'Ancestor',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+			)
+		);
+
+		$child_id = wp_insert_post(
+			array(
+				'post_name'   => 'middle',
+				'post_title'  => 'Middle',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+			)
+		);
+
+		$grandchild_id = wp_insert_post(
+			array(
+				'post_name'   => 'descendant',
+				'post_title'  => 'Descendant',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+				'post_parent' => $child_id,
+			)
+		);
+
+		$jekyll_export->write( 'Grandchild content', get_post( $grandchild_id ) );
+
+		$this->assertFileExists( $jekyll_export->dir . 'ancestor/middle/descendant.md' );
+	}
+
+	/**
 	 * Test that rename_key handles non-existent key
 	 */
 	function test_rename_key_nonexistent() {
