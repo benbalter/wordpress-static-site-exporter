@@ -104,9 +104,9 @@ script/fmt
    - Support both single-site and multisite installations
 
 2. **Internationalization**:
-   - Text domain: `jekyll-export`
+   - Text domain: `jekyll-exporter` (matches the WordPress.org slug)
    - Use WordPress i18n functions: `__()`, `_e()`, `esc_html__()`, etc.
-   - Translation files are in `languages/` directory
+   - Translations come from language packs on translate.wordpress.org; none are bundled
 
 3. **Security**:
    - Sanitize all user inputs
@@ -138,7 +138,7 @@ script/fmt
 3. Write PHPUnit tests for new functionality
 4. Update documentation in `docs/` if user-facing
 5. Run tests and code style checks
-6. If modifying user-visible strings, update translations
+6. If modifying user-visible strings, use the `jekyll-exporter` text domain
 
 ### Fixing Bugs
 

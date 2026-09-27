@@ -82,6 +82,10 @@ At a high level, [the process for proposing changes](https://guides.github.com/i
 
 `script/cibuild`
 
+## Translations
+
+Translations are managed on [translate.wordpress.org](https://translate.wordpress.org/projects/wp-plugins/jekyll-exporter/) and delivered to sites as WordPress.org language packs. Contribute translations there rather than opening a pull request.
+
 ## Code of conduct
 
 This project is governed by [the Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
