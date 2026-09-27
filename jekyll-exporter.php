@@ -100,13 +100,6 @@ class Jekyll_Export {
 	public $zip;
 
 	/**
-	 * Whether an export is currently in progress (used by the shutdown handler).
-	 *
-	 * @var bool
-	 */
-	private $exporting = false;
-
-	/**
 	 * Hook into WP Core
 	 */
 	public function __construct() {
@@ -617,11 +610,12 @@ class Jekyll_Export {
 		// Attempt to increase memory limit for large exports.
 		wp_raise_memory_limit( 'jekyll_export' );
 
-		// Register a shutdown handler to catch fatal errors (e.g. memory
-		// exhaustion) that bypass the try-catch block, turning a generic 500
-		// Internal Server Error into a descriptive error page.
-		$this->exporting = true;
-		register_shutdown_function( array( $this, 'shutdown_handler' ) );
+		// Fatal errors (e.g. memory exhaustion) bypass the try-catch block and are
+		// handled by core's fatal error handler.  While the export runs, filter
+		// the page it renders so it says what failed instead of the generic
+		// "critical error" message.
+		add_filter( 'wp_php_error_message', array( $this, 'fatal_error_message' ), 10, 2 );
+		add_filter( 'wp_php_error_args', array( $this, 'fatal_error_args' ), 10, 2 );
 
 		try {
 			$ob_level_before = ob_get_level();
@@ -642,10 +636,7 @@ class Jekyll_Export {
 				$this->save( $destination );
 			}
 			$this->cleanup();
-			$this->exporting = false;
 		} catch ( \Throwable $e ) {
-			$this->exporting = false;
-
 			// Clean up only output buffers that export() started, leaving any
 			// pre-existing WordPress/admin buffers intact.
 			while ( ob_get_level() > $ob_level_before ) {
@@ -663,57 +654,52 @@ class Jekyll_Export {
 				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
 				array( 'back_link' => true )
 			);
+		} finally {
+			remove_filter( 'wp_php_error_message', array( $this, 'fatal_error_message' ), 10 );
+			remove_filter( 'wp_php_error_args', array( $this, 'fatal_error_args' ), 10 );
 		}
 	}
 
 	/**
-	 * Shutdown handler to catch fatal errors during export.
+	 * Replace core's fatal error message while an export is running.
 	 *
-	 * PHP fatal errors (e.g. memory exhaustion, maximum execution time) cannot
-	 * be caught by try-catch.  This handler inspects the last error and, when
-	 * a fatal error occurred while an export was in progress, outputs a
-	 * descriptive error page instead of the generic "Internal Server Error".
+	 * Hooked to `wp_php_error_message` for the duration of export().  PHP fatal
+	 * errors (e.g. memory exhaustion, maximum execution time) cannot be caught
+	 * by try-catch, so core's fatal error handler renders the error page; this
+	 * makes that page say what failed and how to fix it.
+	 *
+	 * @param string $message HTML error message to display.
+	 * @param array  $error   Error information retrieved from error_get_last().
+	 * @return string The filtered message.
 	 */
-	public function shutdown_handler() {
-		if ( ! $this->exporting ) {
-			return;
-		}
-
-		$error = error_get_last();
-		if ( null === $error ) {
-			return;
-		}
-
-		// Only handle fatal error types.
-		$fatal_types = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
-		if ( ! ( $error['type'] & $fatal_types ) ) {
-			return;
-		}
-
-		// Clean any partial output.
-		while ( ob_get_level() > 0 ) {
-			ob_end_clean();
-		}
-
-		// Build a user-friendly message.
-		$message = $error['message'];
+	public function fatal_error_message( $message, $error ) {
+		$details = isset( $error['message'] ) ? (string) $error['message'] : '';
 
 		// Detect common causes and add guidance.
-		if ( stripos( $message, 'Allowed memory size' ) !== false ) {
-			$message .= ' ' . __( 'Try increasing the PHP memory_limit in php.ini or contact your hosting provider.', 'jekyll-exporter' );
-		} elseif ( stripos( $message, 'Maximum execution time' ) !== false ) {
-			$message .= ' ' . __( 'The export took too long. Try exporting fewer posts using WP-CLI with the --category or --post_type flags.', 'jekyll-exporter' );
+		if ( stripos( $details, 'Allowed memory size' ) !== false ) {
+			$details .= ' ' . __( 'Try increasing the PHP memory_limit in php.ini or contact your hosting provider.', 'jekyll-exporter' );
+		} elseif ( stripos( $details, 'Maximum execution time' ) !== false ) {
+			$details .= ' ' . __( 'The export took too long. Try exporting fewer posts using WP-CLI with the --category or --post_type flags.', 'jekyll-exporter' );
 		}
 
-		wp_die(
-			/* translators: %s: error message from the fatal error */
-			wp_kses_post( sprintf( __( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $message ) ) ),
-			esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
-			array(
-				'back_link' => true,
-				'response'  => 500,
-			)
-		);
+		/* translators: %s: error message from the fatal error */
+		return '<p>' . sprintf( esc_html__( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $details ) ) . '</p>';
+	}
+
+	/**
+	 * Set the title of core's fatal error page while an export is running.
+	 *
+	 * Hooked to `wp_php_error_args` for the duration of export().
+	 *
+	 * @param array $args  Arguments passed to wp_die().
+	 * @param array $error Error information retrieved from error_get_last().
+	 * @return array The filtered arguments.
+	 */
+	public function fatal_error_args( $args, $error ) {
+		$args['title']     = __( 'Jekyll Export Error', 'jekyll-exporter' );
+		$args['back_link'] = true;
+		$args['response']  = 500;
+		return $args;
 	}
 
 

@@ -492,16 +492,50 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that shutdown_handler does nothing when not exporting
+	 * Test that the fatal error page explains memory exhaustion during export.
 	 */
-	function test_shutdown_handler_noop_when_not_exporting() {
+	function test_fatal_error_message_adds_memory_guidance() {
 		global $jekyll_export;
 
-		// Should return early without calling wp_die.
-		$jekyll_export->shutdown_handler();
+		$error = array(
+			'type'    => E_ERROR,
+			'message' => 'Allowed memory size of 134217728 bytes exhausted',
+			'file'    => __FILE__,
+			'line'    => 1,
+		);
 
-		// If we get here, it didn't call wp_die (which would throw WPDieException).
-		$this->assertTrue( true );
+		add_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ), 10, 2 );
+		add_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ), 10, 2 );
+
+		try {
+			$message = apply_filters( 'wp_php_error_message', '<p>There has been a critical error on this website.</p>', $error );
+			$args    = apply_filters( 'wp_php_error_args', array( 'response' => 500 ), $error );
+		} finally {
+			remove_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ), 10 );
+			remove_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ), 10 );
+		}
+
+		$this->assertStringContainsString( 'Jekyll Export failed: Allowed memory size', $message );
+		$this->assertStringContainsString( 'memory_limit', $message );
+		$this->assertSame( 'Jekyll Export Error', $args['title'] );
+		$this->assertSame( 500, $args['response'] );
+	}
+
+	/**
+	 * Test that the fatal error filters are only attached while an export runs.
+	 */
+	function test_fatal_error_filters_removed_after_export() {
+		global $jekyll_export;
+
+		$destination = get_temp_dir() . 'jekyll-export-fatal-filter-test.zip';
+
+		$jekyll_export->export( $destination );
+
+		$this->assertFalse( has_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ) ) );
+		$this->assertFalse( has_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ) ) );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+		@unlink( $destination );
 	}
 
 	/**
