@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: read
+
 jobs:
   tag:
     name: New tag
@@ -14,11 +17,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Verify version numbers match the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          plugin=$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*//p' jekyll-exporter.php | tr -d '\r')
+          readme=$(sed -n 's/^Stable tag:[[:space:]]*//p' readme.txt | tr -d '\r')
+          header=$(sed -n 's/^Stable tag:[[:space:]]*//p' docs/header.md | tr -d '\r')
+          echo "tag=$tag plugin=$plugin readme=$readme docs/header.md=$header"
+          if [ "$tag" != "$plugin" ] || [ "$tag" != "$readme" ] || [ "$tag" != "$header" ]; then
+            echo "::error::Tag, plugin Version, and Stable tag (readme.txt, docs/header.md) must all match."
+            exit 1
+          fi
+
       - name: Install SVN
         run: sudo apt-get install -y subversion
 
       - name: WordPress Plugin Deploy
-        uses: 10up/action-wordpress-plugin-deploy@stable
+        uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # 2.3.0
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
