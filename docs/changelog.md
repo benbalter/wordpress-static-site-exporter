@@ -4,6 +4,8 @@
 
 * `send()` now discards every output buffer left open by a theme or another plugin before it streams the archive (web requests only; under WP-CLI the caller owns stdout) ([#413](https://github.com/benbalter/wordpress-static-site-exporter/issues/413)). A buffer with a callback (an HTML minifier, a CDN rewriter) would otherwise rewrite the binary zip on its way out, and a buffer opened without a chunk size would hold the entire archive in memory until the export died mid-stream. Both reach the browser as a truncated or unreadable download rather than an error page
 * `send()` now disables `zlib.output_compression` and opens the archive before tearing down those buffers, so a read failure is still reportable as an admin error page, and checks `headers_sent()` afterwards, so content that was merely buffered is no longer mistaken for output already on the wire
+* New `--output=<file>` option for `wp jekyll-export` writes the zip to a file instead of STDOUT, so a PHP notice printed during the export can no longer corrupt the archive
+* Posts are now exported in batches of 100. Each batch's posts, custom fields, terms, and featured images are loaded in a few bulk queries instead of several queries per post, and released from memory afterwards, so large sites export faster and memory use no longer grows with the number of posts
 
 ### 4.1.1
 

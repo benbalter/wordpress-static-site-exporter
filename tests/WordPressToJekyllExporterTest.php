@@ -1342,6 +1342,55 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that export() writes the archive to a file when given a destination
+	 */
+	function test_export_to_destination() {
+		global $jekyll_export;
+
+		$destination = get_temp_dir() . 'jekyll-export-test-' . wp_generate_password( 8, false ) . '.zip';
+
+		ob_start();
+		$jekyll_export->export( $destination );
+		$output = ob_get_clean();
+
+		try {
+			$this->assertSame( '', $output, 'Nothing should be streamed when a destination is given' );
+			$this->assertFileExists( $destination );
+
+			$zip = new ZipArchive();
+			$this->assertTrue( $zip->open( $destination ) );
+			$this->assertNotFalse( $zip->locateName( '_posts/2014-01-01-test-post.md' ) );
+			$zip->close();
+
+			$this->assertFileDoesNotExist( $jekyll_export->zip, 'Temporary archive should be cleaned up' );
+		} finally {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			@unlink( $destination );
+		}
+	}
+
+	/**
+	 * Test that convert_posts() exports every post when there are several batches
+	 */
+	function test_convert_posts_multiple_batches() {
+		global $jekyll_export;
+
+		$post_ids = self::factory()->post->create_many(
+			205,
+			array(
+				'post_date' => '2015-06-01 00:00:00',
+			)
+		);
+
+		$jekyll_export->convert_posts();
+
+		foreach ( $post_ids as $post_id ) {
+			$slug = get_post_field( 'post_name', $post_id );
+			$this->assertFileExists( $jekyll_export->dir . '_posts/2015-06-01-' . $slug . '.md' );
+		}
+	}
+
+	/**
 	 * Test that callback() does not export for non-admin users
 	 */
 	function test_callback_blocks_non_admin() {

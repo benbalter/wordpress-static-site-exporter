@@ -434,20 +434,57 @@ class Jekyll_Export {
 	public function convert_posts() {
 		global $post;
 
-		foreach ( $this->get_posts() as $post_id ) {
-			$post = get_post( $post_id );
-			setup_postdata( $post );
+		// Work in batches: load each batch's posts, meta, and terms in a few bulk
+		// queries rather than several queries per post, then release them from
+		// the in-memory object cache so memory use doesn't grow with the size of
+		// the site.
+		foreach ( array_chunk( $this->get_posts(), 100 ) as $post_ids ) {
+			$this->prime_post_caches( $post_ids );
 
-			$meta = array_merge( $this->convert_meta( $post ), $this->convert_terms( $post ) );
+			foreach ( $post_ids as $post_id ) {
+				$post = get_post( $post_id );
+				setup_postdata( $post );
 
-			// Allow users to customize the post metadata before it's written.
-			$meta = apply_filters( 'jekyll_export_post_meta', $meta, $post );
+				$meta = array_merge( $this->convert_meta( $post ), $this->convert_terms( $post ) );
 
-			$output  = "---\n";
-			$output .= Yaml::dump( $meta );
-			$output .= "---\n\n";
-			$output .= $this->convert_content( $post );
-			$this->write( $output, $post );
+				// Allow users to customize the post metadata before it's written.
+				$meta = apply_filters( 'jekyll_export_post_meta', $meta, $post );
+
+				$output  = "---\n";
+				$output .= Yaml::dump( $meta );
+				$output .= "---\n\n";
+				$output .= $this->convert_content( $post );
+				$this->write( $output, $post );
+			}
+
+			if ( wp_cache_supports( 'flush_runtime' ) ) {
+				wp_cache_flush_runtime();
+			}
+		}
+
+		wp_reset_postdata();
+	}
+
+	/**
+	 * Load a batch of posts, their meta and terms, and their featured images
+	 * into the object cache in bulk.
+	 *
+	 * @param int[] $post_ids the post IDs to prime.
+	 * @return void
+	 */
+	protected function prime_post_caches( $post_ids ) {
+		_prime_post_caches( $post_ids, true, true );
+
+		$thumbnail_ids = array();
+		foreach ( $post_ids as $post_id ) {
+			$thumbnail_id = (int) get_post_meta( $post_id, '_thumbnail_id', true );
+			if ( $thumbnail_id ) {
+				$thumbnail_ids[] = $thumbnail_id;
+			}
+		}
+
+		if ( ! empty( $thumbnail_ids ) ) {
+			_prime_post_caches( array_unique( $thumbnail_ids ), false, true );
 		}
 	}
 
@@ -551,8 +588,11 @@ class Jekyll_Export {
 
 	/**
 	 * Main function, bootstraps, converts, and cleans up
+	 *
+	 * @param string|null $destination Optional path to save the archive to. When
+	 *                                 omitted, the archive is streamed as a download.
 	 */
-	public function export() {
+	public function export( $destination = null ) {
 		$validation = $this->validate_environment();
 		if ( is_wp_error( $validation ) ) {
 			wp_die(
@@ -588,7 +628,11 @@ class Jekyll_Export {
 			$this->convert_uploads();
 			$this->zip();
 			ob_end_clean();
-			$this->send();
+			if ( null === $destination ) {
+				$this->send();
+			} else {
+				$this->save( $destination );
+			}
 			$this->cleanup();
 			$this->exporting = false;
 		} catch ( \Throwable $e ) {
@@ -955,6 +999,21 @@ class Jekyll_Export {
 		fclose( $handle );
 	}
 
+
+	/**
+	 * Copy the archive to a file instead of streaming it.
+	 *
+	 * @param string $destination the path to write the archive to.
+	 * @throws \RuntimeException If the archive cannot be written.
+	 */
+	public function save( $destination ) {
+		global $wp_filesystem;
+
+		if ( ! $wp_filesystem->copy( $this->zip, $destination, true ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
+			throw new \RuntimeException( sprintf( 'The export archive could not be written to %s.', $destination ) );
+		}
+	}
 
 	/**
 	 * Clear temp files
