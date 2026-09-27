@@ -249,7 +249,7 @@ class Jekyll_Export {
 
 		// Preserve exact permalink, since Jekyll doesn't support redirection.
 		if ( 'page' !== $post->post_type ) {
-			$output['permalink'] = str_replace( home_url(), '', get_permalink( $post ) );
+			$output['permalink'] = $this->make_url_relative( get_permalink( $post ) );
 		}
 
 		// Reserved front matter keys set above; a public custom field of the same name will
@@ -277,7 +277,7 @@ class Jekyll_Export {
 			$post_thumbnail_src = wp_get_attachment_image_src( $post_thumbnail_id, 'post-thumbnail' );
 
 			if ( $post_thumbnail_src ) {
-				$output['image'] = str_replace( home_url(), '', $post_thumbnail_src[0] );
+				$output['image'] = $this->make_url_relative( $post_thumbnail_src[0] );
 			}
 		}
 
@@ -330,16 +330,29 @@ class Jekyll_Export {
 	 * @return String the content with localized URLs
 	 */
 	public function localize_urls( $content ) {
-		// Strip both the site URL (where WordPress and the uploads live) and the home
-		// URL (what permalinks use); they differ when WordPress is installed in a
-		// subdirectory.  Both schemes are stripped, so http://example.org/wp-content/uploads/image.jpg
+		// Both schemes are stripped, so http://example.org/wp-content/uploads/image.jpg
 		// becomes /wp-content/uploads/image.jpg.
+		$content = str_replace( $this->get_local_urls(), '', $content );
+
+		return apply_filters( 'jekyll_export_localized_urls', $content );
+	}
+
+	/**
+	 * The site's own absolute URLs, to be stripped when making URLs relative.
+	 *
+	 * Includes both the site URL (where WordPress and the uploads live) and the
+	 * home URL (what permalinks use), which differ when WordPress is installed in
+	 * a subdirectory, each in both the http and https schemes.
+	 *
+	 * @return string[] URLs without trailing slashes, longest first.
+	 */
+	protected function get_local_urls() {
 		$urls = array();
 		foreach ( array( get_site_url(), home_url() ) as $url ) {
-			$urls[] = set_url_scheme( $url, 'http' );
-			$urls[] = set_url_scheme( $url, 'https' );
+			$urls[] = untrailingslashit( set_url_scheme( $url, 'http' ) );
+			$urls[] = untrailingslashit( set_url_scheme( $url, 'https' ) );
 		}
-		$urls = array_unique( $urls );
+		$urls = array_values( array_unique( $urls ) );
 
 		// Longest first, so a subdirectory install's site URL is not left
 		// half-replaced by the shorter home URL it starts with.
@@ -350,9 +363,37 @@ class Jekyll_Export {
 			}
 		);
 
-		$content = str_replace( $urls, '', $content );
+		return $urls;
+	}
 
-		return apply_filters( 'jekyll_export_localized_urls', $content );
+	/**
+	 * Make a single URL relative if it points at this site.
+	 *
+	 * The site or home URL is only stripped when it is followed by a path, query,
+	 * or fragment (or nothing), so https://example.org does not match
+	 * https://example.org.evil.com or https://example.org/wp does not eat the
+	 * start of https://example.org/wp-post/.
+	 *
+	 * @param string $url the absolute URL.
+	 * @return string the site-relative URL, or the URL unchanged if it is not local.
+	 */
+	public function make_url_relative( $url ) {
+		foreach ( $this->get_local_urls() as $local ) {
+			if ( 0 !== strpos( $url, $local ) ) {
+				continue;
+			}
+
+			$rest = (string) substr( $url, strlen( $local ) );
+			if ( '' === $rest ) {
+				return '/';
+			}
+
+			if ( in_array( $rest[0], array( '/', '?', '#' ), true ) ) {
+				return $rest;
+			}
+		}
+
+		return $url;
 	}
 
 	/**

@@ -669,6 +669,65 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that front matter URLs are made relative whichever scheme the site
+	 * and home URLs use.
+	 */
+	function test_convert_meta_strips_local_urls_in_either_scheme() {
+		global $jekyll_export;
+
+		$upload_dir = wp_upload_dir();
+		$image_path = $upload_dir['basedir'] . '/scheme-image.jpg';
+		file_put_contents( $image_path, 'fake image content' );
+
+		$attachment_id = wp_insert_attachment(
+			array(
+				'post_mime_type' => 'image/jpeg',
+				'post_title'     => 'Scheme Image',
+				'post_status'    => 'inherit',
+			),
+			$image_path
+		);
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'  => 'Scheme Post',
+				'post_status' => 'publish',
+				'post_author' => self::$author_id,
+			)
+		);
+		set_post_thumbnail( $post_id, $attachment_id );
+
+		// Uploads are served from http://example.org; make the home URL https.
+		$https_home = function () {
+			return 'https://example.org';
+		};
+		add_filter( 'pre_option_home', $https_home );
+
+		try {
+			$meta = $jekyll_export->convert_meta( get_post( $post_id ) );
+		} finally {
+			remove_filter( 'pre_option_home', $https_home );
+		}
+
+		$this->assertStringStartsWith( '/wp-content/uploads/', $meta['image'] );
+		$this->assertStringStartsWith( '/', $meta['permalink'] );
+		$this->assertStringNotContainsString( 'example.org', $meta['permalink'] );
+	}
+
+	/**
+	 * Test that make_url_relative only strips the site URL at a path boundary.
+	 */
+	function test_make_url_relative() {
+		global $jekyll_export;
+
+		$this->assertSame( '/2020/01/post/', $jekyll_export->make_url_relative( 'http://example.org/2020/01/post/' ) );
+		$this->assertSame( '/?p=1', $jekyll_export->make_url_relative( 'https://example.org/?p=1' ) );
+		$this->assertSame( '/', $jekyll_export->make_url_relative( 'http://example.org' ) );
+		$this->assertSame( 'http://example.org.evil.com/x', $jekyll_export->make_url_relative( 'http://example.org.evil.com/x' ) );
+		$this->assertSame( 'https://external-site.com/image.jpg', $jekyll_export->make_url_relative( 'https://external-site.com/image.jpg' ) );
+	}
+
+	/**
 	 * Test that convert_terms handles post without terms
 	 */
 	function test_convert_terms_no_terms() {
