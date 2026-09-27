@@ -63,14 +63,14 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			$taxonomy_filters = array();
 
 			if ( ! empty( $assoc_args['category'] ) ) {
-				$categories = array_filter( array_map( 'trim', explode( ',', $assoc_args['category'] ) ) );
+				$categories = wp_parse_list( $assoc_args['category'] );
 				if ( ! empty( $categories ) ) {
 					$taxonomy_filters['category'] = $categories;
 				}
 			}
 
 			if ( ! empty( $assoc_args['tag'] ) ) {
-				$tags = array_filter( array_map( 'trim', explode( ',', $assoc_args['tag'] ) ) );
+				$tags = wp_parse_list( $assoc_args['tag'] );
 				if ( ! empty( $tags ) ) {
 					$taxonomy_filters['post_tag'] = $tags;
 				}

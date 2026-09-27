@@ -508,8 +508,8 @@ class Jekyll_Export {
 	}
 
 	/**
-	 * Load a batch of posts, their meta and terms, and their featured images
-	 * into the object cache in bulk.
+	 * Load a batch of posts, their meta and terms, their featured images, and
+	 * their authors into the object cache in bulk.
 	 *
 	 * @param int[] $post_ids the post IDs to prime.
 	 * @return void
@@ -518,11 +518,21 @@ class Jekyll_Export {
 		_prime_post_caches( $post_ids, true, true );
 
 		$thumbnail_ids = array();
+		$author_ids    = array();
 		foreach ( $post_ids as $post_id ) {
 			$thumbnail_id = (int) get_post_meta( $post_id, '_thumbnail_id', true );
 			if ( $thumbnail_id ) {
 				$thumbnail_ids[] = $thumbnail_id;
 			}
+
+			$batch_post = get_post( $post_id );
+			if ( $batch_post && $batch_post->post_author ) {
+				$author_ids[] = (int) $batch_post->post_author;
+			}
+		}
+
+		if ( ! empty( $author_ids ) ) {
+			cache_users( array_unique( $author_ids ) );
 		}
 
 		if ( ! empty( $thumbnail_ids ) ) {
@@ -603,8 +613,7 @@ class Jekyll_Export {
 		}
 
 		$temp_dir = $this->get_export_temp_dir();
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Checking temp dir writability before WP_Filesystem is initialized.
-		if ( ! is_writable( $temp_dir ) ) {
+		if ( ! wp_is_writable( $temp_dir ) ) {
 			$errors->add(
 				'temp_not_writable',
 				/* translators: %s: temporary directory path */
@@ -811,7 +820,7 @@ class Jekyll_Export {
 			$segments = array_map( 'sanitize_file_name', explode( '/', get_page_uri( $post->ID ) ) );
 			$filename = implode( '/', $segments ) . '.md';
 		} else {
-			$filename = '_' . get_post_type( $post ) . 's/' . gmdate( 'Y-m-d', strtotime( $post->post_date ) ) . '-' . sanitize_file_name( $post->post_name ) . '.md';
+			$filename = '_' . get_post_type( $post ) . 's/' . mysql2date( 'Y-m-d', $post->post_date, false ) . '-' . sanitize_file_name( $post->post_name ) . '.md';
 		}
 
 		// A nested page can be written before its parent, so create every missing
@@ -847,15 +856,10 @@ class Jekyll_Export {
 			throw new \RuntimeException( sprintf( 'Cannot open zip archive %s (error code %d)', $destination, (int) $opened ) );
 		}
 
-		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source ), RecursiveIteratorIterator::SELF_FIRST );
+		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::SELF_FIRST );
 
 		foreach ( $files as $file ) {
 			$path = (string) $file;
-
-			// Ignore "." and ".." folders.
-			if ( in_array( substr( $path, strrpos( $path, DIRECTORY_SEPARATOR ) + 1 ), array( '.', '..' ), true ) ) {
-				continue;
-			}
 
 			// realpath() returns false for a file that vanished mid-export (or a
 			// broken symlink), which would otherwise produce an empty entry name.
