@@ -1,9 +1,6 @@
 #!/bin/sh
+# Files to check are listed in phpcs.ruleset.xml.
 
 set -e
 
-export PATH="$TRAVIS_BUILD_DIR/vendor/squizlabs/php_codesniffer/bin:$PATH"
-
-composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-composer require --dev wp-coding-standards/wpcs:"^3.0"
-phpcs --standard=phpcs.ruleset.xml -p -s --colors *.php */**.php -v
+bin/phpcs --standard=phpcs.ruleset.xml -p -s --colors

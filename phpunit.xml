@@ -1,4 +1,7 @@
+<?xml version="1.0"?>
 <phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
 	bootstrap="tests/bootstrap.php"
 	backupGlobals="false"
 	colors="true"
@@ -8,13 +11,13 @@
 			<directory suffix="Test.php">./tests/</directory>
 		</testsuite>
 	</testsuites>
-	<filter>
-		<whitelist processUncoveredFilesFromWhitelist="true">
+	<coverage processUncoveredFiles="true">
+		<include>
 			<directory suffix=".php">./lib</directory>
 			<file>./jekyll-exporter.php</file>
-		</whitelist>
-	</filter>
-	<logging>
-		<log type="coverage-clover" target="coverage.xml"/>
-	</logging>
+		</include>
+		<report>
+			<clover outputFile="coverage.xml"/>
+		</report>
+	</coverage>
 </phpunit>
