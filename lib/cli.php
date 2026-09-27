@@ -30,6 +30,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 * [--post_type=<post_type>]
 		 * : Export only specific post types (comma-separated).
 		 *
+		 * [--output=<file>]
+		 * : Write the zip to this file instead of STDOUT.
+		 *
 		 * ## EXAMPLES
 		 *
 		 *     # Export all content
@@ -46,6 +49,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 *
 		 *     # Export only pages
 		 *     $ wp jekyll-export --post_type=page > export.zip
+		 *
+		 *     # Write the zip to a file
+		 *     $ wp jekyll-export --output=export.zip
 		 *
 		 * @param array $args       Positional arguments.
 		 * @param array $assoc_args Associative arguments.
@@ -93,7 +99,13 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				}
 			}
 
-			$jekyll_export->export();
+			if ( empty( $assoc_args['output'] ) ) {
+				$jekyll_export->export();
+				return;
+			}
+
+			$jekyll_export->export( $assoc_args['output'] );
+			WP_CLI::success( sprintf( 'Exported to %s', $assoc_args['output'] ) );
 		}
 	}
 

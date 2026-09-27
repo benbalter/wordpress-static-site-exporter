@@ -8,6 +8,8 @@
 * `get_posts()` no longer caches the list of post IDs in the object cache. The cache key ignored the `jekyll_export_post_types` and `jekyll_export_taxonomy_filters` filters and never expired, so on a site with a persistent object cache (Redis, Memcached) a filtered export, such as `wp jekyll-export --category=...`, could return a previous run's posts
 * `convert_options()` no longer runs `maybe_unserialize()` on values `get_option()` has already unserialized
 * URL localization now strips the home URL as well as the site URL, so internal links are made relative when WordPress is installed in a subdirectory
+* New `--output=<file>` option for `wp jekyll-export` writes the zip to a file instead of STDOUT, so a PHP notice printed during the export can no longer corrupt the archive
+* Posts are now exported in batches of 100. Each batch's posts, custom fields, terms, and featured images are loaded in a few bulk queries instead of several queries per post, and released from memory afterwards, so large sites export faster and memory use no longer grows with the number of posts
 
 ### 4.1.1
 

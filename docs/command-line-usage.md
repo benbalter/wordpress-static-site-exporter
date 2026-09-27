@@ -18,6 +18,12 @@ wp jekyll-export > export.zip
 
 The WP-CLI version will provide greater compatibility for alternate WordPress environments, such as when `wp-content` isn't in the usual location.
 
+To write the zip straight to a file instead of STDOUT, pass `--output`. This keeps a stray PHP notice or warning from ending up inside the archive:
+
+```
+wp jekyll-export --output=export.zip
+```
+
 ## Filtering by Category or Tag
 
 You can export only specific categories or tags using the WP-CLI command. This is useful when you want to convert just one section of your WordPress site instead of the entire corpus.
