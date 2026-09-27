@@ -127,7 +127,6 @@ class ColspanTableConverter extends TableConverter {
 		try {
 			$reflection                       = new ReflectionClass( parent::class );
 			$this->column_alignments_property = $reflection->getProperty( 'columnAlignments' );
-			$this->column_alignments_property->setAccessible( true );
 		} catch ( ReflectionException $e ) {
 			return false;
 		}

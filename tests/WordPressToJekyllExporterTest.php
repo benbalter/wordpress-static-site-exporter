@@ -889,9 +889,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	function test_get_posts_caching() {
 		global $jekyll_export;
 
-		// Clear cache.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		// First call should set cache.
 		$posts1 = $jekyll_export->get_posts();
 
@@ -927,9 +924,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	function test_filter_posts_by_category() {
 		global $jekyll_export;
 
-		// Clear cache to ensure fresh query.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		// Create a new category.
 		$tech_cat_id = wp_insert_category( array( 'cat_name' => 'Technology', 'category_nicename' => 'technology' ) );
 
@@ -951,9 +945,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 			}
 		);
 
-		// Clear cache again to force new query with filter.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		$posts = $jekyll_export->get_posts();
 
 		// Verify that only the tech post is returned.
@@ -971,9 +962,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	 */
 	function test_filter_posts_by_tag() {
 		global $jekyll_export;
-
-		// Clear cache to ensure fresh query.
-		wp_cache_delete( 'jekyll_export_posts' );
 
 		// Create a post with a specific tag.
 		$featured_post_id = wp_insert_post(
@@ -993,9 +981,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 			}
 		);
 
-		// Clear cache again to force new query with filter.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		$posts = $jekyll_export->get_posts();
 
 		// Verify that only the featured post is returned.
@@ -1012,9 +997,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	 */
 	function test_filter_posts_by_multiple_categories() {
 		global $jekyll_export;
-
-		// Clear cache to ensure fresh query.
-		wp_cache_delete( 'jekyll_export_posts' );
 
 		// Create two categories.
 		$cat1_id = wp_insert_category( array( 'cat_name' => 'Category1', 'category_nicename' => 'category1' ) );
@@ -1047,9 +1029,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 			}
 		);
 
-		// Clear cache again to force new query with filter.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		$posts = $jekyll_export->get_posts();
 
 		// Verify that both posts are returned.
@@ -1069,9 +1048,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	 */
 	function test_filter_posts_with_category_and_tag() {
 		global $jekyll_export;
-
-		// Clear cache to ensure fresh query.
-		wp_cache_delete( 'jekyll_export_posts' );
 
 		// Create a category.
 		$tech_cat_id = wp_insert_category( array( 'cat_name' => 'Technology', 'category_nicename' => 'technology' ) );
@@ -1115,9 +1091,6 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 				);
 			}
 		);
-
-		// Clear cache again to force new query with filter.
-		wp_cache_delete( 'jekyll_export_posts' );
 
 		$posts = $jekyll_export->get_posts();
 
@@ -1182,6 +1155,34 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$content = '<img src="https://external-site.com/image.jpg" alt="external">';
 		$result  = $jekyll_export->localize_urls( $content );
 		$this->assertStringContainsString( 'https://external-site.com/image.jpg', $result );
+	}
+
+	/**
+	 * Test that localize_urls strips both the home and site URLs when WordPress
+	 * is installed in a subdirectory.
+	 */
+	function test_localize_urls_subdirectory_install() {
+		global $jekyll_export;
+
+		$site_url = function () {
+			return 'http://example.org/wp';
+		};
+		$home_url = function () {
+			return 'http://example.org';
+		};
+		add_filter( 'site_url', $site_url );
+		add_filter( 'home_url', $home_url );
+
+		try {
+			$content = '<a href="https://example.org/2020/01/post/">post</a> <img src="http://example.org/wp/wp-content/uploads/image.jpg">';
+			$result  = $jekyll_export->localize_urls( $content );
+		} finally {
+			remove_filter( 'site_url', $site_url );
+			remove_filter( 'home_url', $home_url );
+		}
+
+		$this->assertStringContainsString( 'href="/2020/01/post/"', $result );
+		$this->assertStringContainsString( 'src="/wp-content/uploads/image.jpg"', $result );
 	}
 
 	/**

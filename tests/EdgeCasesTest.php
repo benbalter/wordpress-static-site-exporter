@@ -400,9 +400,6 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	function test_convert_posts_empty() {
 		global $jekyll_export, $wpdb;
 
-		// Temporarily delete all posts from cache.
-		wp_cache_delete( 'jekyll_export_posts' );
-
 		// Mock get_posts to return empty array.
 		$original_posts = $jekyll_export->get_posts();
 
@@ -545,7 +542,6 @@ class EdgeCasesTest extends WP_UnitTestCase {
 				'post_author'  => self::$author_id,
 			)
 		);
-		wp_cache_delete( 'jekyll_export_posts' );
 
 		// export() should call wp_die with the exception message instead of crashing.
 		$this->expectException( 'WPDieException' );
@@ -662,7 +658,6 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->assertNotEmpty( $revision_id, 'A revision should have been created for the test.' );
 
 		// Default: revision must not be part of the export set.
-		wp_cache_delete( 'jekyll_export_posts' );
 		$default_posts = $jekyll_export->get_posts();
 		$this->assertContains( $post_id, $default_posts );
 		$this->assertNotContains( $revision_id, $default_posts, 'Revisions should be excluded by default.' );
@@ -674,12 +669,10 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		};
 		add_filter( 'jekyll_export_post_types', $filter );
 		try {
-			wp_cache_delete( 'jekyll_export_posts' );
 			$with_revisions = $jekyll_export->get_posts();
 			$this->assertContains( $revision_id, $with_revisions, 'Filter should restore revision export.' );
 		} finally {
 			remove_filter( 'jekyll_export_post_types', $filter );
-			wp_cache_delete( 'jekyll_export_posts' );
 		}
 	}
 
