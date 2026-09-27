@@ -36,7 +36,7 @@ services:
       - ${PWD}/:/var/www/html/wp-content/plugins/jekyll-exporter
 
   db:
-    image: mysql:8.0
+    image: mariadb:lts
     restart: always
     environment:
       MYSQL_DATABASE: exampledb
