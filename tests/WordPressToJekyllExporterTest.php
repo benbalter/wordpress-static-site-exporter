@@ -158,7 +158,9 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		global $jekyll_export;
 		$jekyll_export->cleanup();
 		$upload_dir = wp_upload_dir();
-		@array_map( 'unlink', glob( $upload_dir['basedir'] . '/*' ) );
+		foreach ( (array) glob( $upload_dir['basedir'] . '/*' ) as $path ) {
+			$GLOBALS['wp_filesystem']->delete( $path, true );
+		}
 	}
 
 	/**
@@ -459,18 +461,10 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$jekyll_export->zip();
 		$this->assertTrue( file_exists( $jekyll_export->zip ) );
 
-		$temp_dir = get_temp_dir() . 'jekyll-export-extract';
-		if ( file_exists( $temp_dir ) ) {
-			$GLOBALS['wp_filesystem']->delete( $temp_dir, true );
-		}
-
 		$zip = new ZipArchive();
-		$zip->open( $jekyll_export->zip );
-		$zip->extractTo( $temp_dir );
+		$this->assertTrue( $zip->open( $jekyll_export->zip ) );
+		$this->assertSame( 'bar', $zip->getFromName( 'foo.txt' ) );
 		$zip->close();
-
-		$this->assertTrue( file_exists( $temp_dir . '/foo.txt' ) );
-		$this->assertEquals( 'bar', file_get_contents( $temp_dir . '/foo.txt' ) );
 	}
 
 	/**
@@ -593,16 +587,10 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertTrue( $result );
 		$this->assertTrue( file_exists( $zip_file ) );
 
-		// Extract and verify.
-		$extract_dir = $jekyll_export->dir . '/extract';
-		mkdir( $extract_dir );
 		$zip = new ZipArchive();
-		$zip->open( $zip_file );
-		$zip->extractTo( $extract_dir );
+		$this->assertTrue( $zip->open( $zip_file ) );
+		$this->assertSame( 'nested content', $zip->getFromName( 'deep/path/test.txt' ) );
 		$zip->close();
-
-		$this->assertTrue( file_exists( $extract_dir . '/deep/path/test.txt' ) );
-		$this->assertEquals( 'nested content', file_get_contents( $extract_dir . '/deep/path/test.txt' ) );
 	}
 
 	/**
@@ -666,6 +654,65 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey( 'image', $meta );
 		$this->assertStringContainsString( 'test-image', $meta['image'] );
+	}
+
+	/**
+	 * Test that front matter URLs are made relative whichever scheme the site
+	 * and home URLs use.
+	 */
+	function test_convert_meta_strips_local_urls_in_either_scheme() {
+		global $jekyll_export;
+
+		$upload_dir = wp_upload_dir();
+		$image_path = $upload_dir['basedir'] . '/scheme-image.jpg';
+		file_put_contents( $image_path, 'fake image content' );
+
+		$attachment_id = wp_insert_attachment(
+			array(
+				'post_mime_type' => 'image/jpeg',
+				'post_title'     => 'Scheme Image',
+				'post_status'    => 'inherit',
+			),
+			$image_path
+		);
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'  => 'Scheme Post',
+				'post_status' => 'publish',
+				'post_author' => self::$author_id,
+			)
+		);
+		set_post_thumbnail( $post_id, $attachment_id );
+
+		// Uploads are served from http://example.org; make the home URL https.
+		$https_home = function () {
+			return 'https://example.org';
+		};
+		add_filter( 'pre_option_home', $https_home );
+
+		try {
+			$meta = $jekyll_export->convert_meta( get_post( $post_id ) );
+		} finally {
+			remove_filter( 'pre_option_home', $https_home );
+		}
+
+		$this->assertStringStartsWith( '/wp-content/uploads/', $meta['image'] );
+		$this->assertStringStartsWith( '/', $meta['permalink'] );
+		$this->assertStringNotContainsString( 'example.org', $meta['permalink'] );
+	}
+
+	/**
+	 * Test that make_url_relative only strips the site URL at a path boundary.
+	 */
+	function test_make_url_relative() {
+		global $jekyll_export;
+
+		$this->assertSame( '/2020/01/post/', $jekyll_export->make_url_relative( 'http://example.org/2020/01/post/' ) );
+		$this->assertSame( '/?p=1', $jekyll_export->make_url_relative( 'https://example.org/?p=1' ) );
+		$this->assertSame( '/', $jekyll_export->make_url_relative( 'http://example.org' ) );
+		$this->assertSame( 'http://example.org.evil.com/x', $jekyll_export->make_url_relative( 'http://example.org.evil.com/x' ) );
+		$this->assertSame( 'https://external-site.com/image.jpg', $jekyll_export->make_url_relative( 'https://external-site.com/image.jpg' ) );
 	}
 
 	/**
@@ -843,6 +890,47 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that write creates every missing directory for a nested page that is
+	 * written before its ancestors.
+	 */
+	function test_write_grandchild_before_parent() {
+		global $jekyll_export;
+
+		$parent_id = wp_insert_post(
+			array(
+				'post_name'   => 'ancestor',
+				'post_title'  => 'Ancestor',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+			)
+		);
+
+		$child_id = wp_insert_post(
+			array(
+				'post_name'   => 'middle',
+				'post_title'  => 'Middle',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+			)
+		);
+
+		$grandchild_id = wp_insert_post(
+			array(
+				'post_name'   => 'descendant',
+				'post_title'  => 'Descendant',
+				'post_status' => 'publish',
+				'post_type'   => 'page',
+				'post_parent' => $child_id,
+			)
+		);
+
+		$jekyll_export->write( 'Grandchild content', get_post( $grandchild_id ) );
+
+		$this->assertFileExists( $jekyll_export->dir . 'ancestor/middle/descendant.md' );
+	}
+
+	/**
 	 * Test that rename_key handles non-existent key
 	 */
 	function test_rename_key_nonexistent() {
@@ -914,8 +1002,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertFalse( file_exists( $jekyll_export->dir . '/copied/test.txt' ) );
 
 		// Cleanup.
-		@unlink( $test_dir . 'test.txt' );
-		@rmdir( $test_dir );
+		$GLOBALS['wp_filesystem']->delete( $test_dir, true );
 	}
 
 	/**
@@ -1158,6 +1245,28 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that localize_urls rewrites href, src, and srcset but leaves URLs in
+	 * text, code, and query strings alone.
+	 */
+	function test_localize_urls_only_rewrites_url_attributes() {
+		global $jekyll_export;
+
+		$content = '<p>See http://example.org/text/ and <code>http://example.org/code</code>.</p>'
+			. '<a href="http://example.org/?redirect=http://example.org/x">nested</a>'
+			. '<img src="http://example.org/a.png" srcset="http://example.org/a.png 1x, https://example.org/a@2x.png 2x, https://cdn.example.com/a.png 3x">'
+			. '<a href="http://example.org.evil.com/">lookalike</a>';
+
+		$result = $jekyll_export->localize_urls( $content );
+
+		$this->assertStringContainsString( 'See http://example.org/text/', $result );
+		$this->assertStringContainsString( '<code>http://example.org/code</code>', $result );
+		$this->assertStringContainsString( 'href="/?redirect=http://example.org/x"', $result );
+		$this->assertStringContainsString( 'src="/a.png"', $result );
+		$this->assertStringContainsString( 'srcset="/a.png 1x, /a@2x.png 2x, https://cdn.example.com/a.png 3x"', $result );
+		$this->assertStringContainsString( 'href="http://example.org.evil.com/"', $result );
+	}
+
+	/**
 	 * Test that localize_urls strips both the home and site URLs when WordPress
 	 * is installed in a subdirectory.
 	 */
@@ -1183,6 +1292,31 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'href="/2020/01/post/"', $result );
 		$this->assertStringContainsString( 'src="/wp-content/uploads/image.jpg"', $result );
+	}
+
+	/**
+	 * Test that "[]: " in a code sample no longer forces the raw-HTML fallback.
+	 *
+	 * The converter escapes brackets in prose, so the removed guard only ever
+	 * matched unescaped code and pre content.
+	 */
+	function test_convert_content_with_empty_reference_in_code() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Literal Reference',
+				'post_content' => '<p>Code <code>[]: x</code> with <strong>bold</strong></p>',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		$result = $jekyll_export->convert_content( get_post( $post_id ) );
+
+		$this->assertStringContainsString( '`[]: x`', $result );
+		$this->assertStringContainsString( '**bold**', $result );
+		$this->assertStringNotContainsString( '<p>', $result );
 	}
 
 	/**
@@ -1365,8 +1499,7 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 			$this->assertFileDoesNotExist( $jekyll_export->zip, 'Temporary archive should be cleaned up' );
 		} finally {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-			@unlink( $destination );
+			$GLOBALS['wp_filesystem']->delete( $destination );
 		}
 	}
 

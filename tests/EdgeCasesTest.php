@@ -318,14 +318,13 @@ class EdgeCasesTest extends WP_UnitTestCase {
 
 			$this->assertTrue( $result );
 
-			// Cleanup.
+			// Remove the link itself first: a recursive delete would follow it.
 			@unlink( $temp_dir . '/link.txt' );
 		}
 
 		// Cleanup.
-		@unlink( $target_dir . '/target.txt' );
-		@rmdir( $target_dir );
-		@rmdir( $temp_dir );
+		$GLOBALS['wp_filesystem']->delete( $target_dir, true );
+		$GLOBALS['wp_filesystem']->delete( $temp_dir, true );
 	}
 
 	/**
@@ -383,12 +382,11 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		$this->assertEquals( 'content 1', file_get_contents( $target_dir . '/file1.txt' ) );
 		$this->assertEquals( 'content 2', file_get_contents( $target_dir . '/file2.txt' ) );
 
-		// Cleanup test directories.
-		@unlink( $target_dir . '/file1.txt' );
-		@unlink( $target_dir . '/file2.txt' );
-		@rmdir( $target_dir );
+		// Cleanup test directories. Remove the link itself first: a recursive
+		// delete would follow it into the target directory.
 		@unlink( $source_dir . '/uploads' );
-		@rmdir( $source_dir );
+		$GLOBALS['wp_filesystem']->delete( $source_dir, true );
+		$GLOBALS['wp_filesystem']->delete( $target_dir, true );
 
 		// Reinitialize temp dir for other tests.
 		$jekyll_export->init_temp_dir();
@@ -492,16 +490,49 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that shutdown_handler does nothing when not exporting
+	 * Test that the fatal error page explains memory exhaustion during export.
 	 */
-	function test_shutdown_handler_noop_when_not_exporting() {
+	function test_fatal_error_message_adds_memory_guidance() {
 		global $jekyll_export;
 
-		// Should return early without calling wp_die.
-		$jekyll_export->shutdown_handler();
+		$error = array(
+			'type'    => E_ERROR,
+			'message' => 'Allowed memory size of 134217728 bytes exhausted',
+			'file'    => __FILE__,
+			'line'    => 1,
+		);
 
-		// If we get here, it didn't call wp_die (which would throw WPDieException).
-		$this->assertTrue( true );
+		add_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ), 10, 2 );
+		add_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ), 10, 2 );
+
+		try {
+			$message = apply_filters( 'wp_php_error_message', '<p>There has been a critical error on this website.</p>', $error );
+			$args    = apply_filters( 'wp_php_error_args', array( 'response' => 500 ), $error );
+		} finally {
+			remove_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ), 10 );
+			remove_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ), 10 );
+		}
+
+		$this->assertStringContainsString( 'Jekyll Export failed: Allowed memory size', $message );
+		$this->assertStringContainsString( 'memory_limit', $message );
+		$this->assertSame( 'Jekyll Export Error', $args['title'] );
+		$this->assertSame( 500, $args['response'] );
+	}
+
+	/**
+	 * Test that the fatal error filters are only attached while an export runs.
+	 */
+	function test_fatal_error_filters_removed_after_export() {
+		global $jekyll_export;
+
+		$destination = get_temp_dir() . 'jekyll-export-fatal-filter-test.zip';
+
+		$jekyll_export->export( $destination );
+
+		$this->assertFalse( has_filter( 'wp_php_error_message', array( $jekyll_export, 'fatal_error_message' ) ) );
+		$this->assertFalse( has_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ) ) );
+
+		$GLOBALS['wp_filesystem']->delete( $destination );
 	}
 
 	/**
@@ -628,6 +659,84 @@ class EdgeCasesTest extends WP_UnitTestCase {
 		} finally {
 			remove_filter( 'jekyll_export_html_converter', $filter );
 		}
+	}
+
+	/**
+	 * Test that trashed posts and auto-drafts are not exported.
+	 */
+	function test_get_posts_excludes_trash_and_auto_drafts() {
+		global $jekyll_export;
+
+		$ids = array();
+		foreach ( array( 'publish', 'draft', 'pending', 'private', 'trash', 'auto-draft' ) as $status ) {
+			$ids[ $status ] = wp_insert_post(
+				array(
+					'post_title'  => 'Status ' . $status,
+					'post_status' => $status,
+					'post_author' => self::$author_id,
+				)
+			);
+		}
+
+		$posts = $jekyll_export->get_posts();
+
+		foreach ( array( 'publish', 'draft', 'pending', 'private' ) as $status ) {
+			$this->assertContains( $ids[ $status ], $posts, "$status post should be exported" );
+		}
+		$this->assertNotContains( $ids['trash'], $posts, 'Trashed post should not be exported' );
+		$this->assertNotContains( $ids['auto-draft'], $posts, 'Auto-draft should not be exported' );
+	}
+
+	/**
+	 * Test that a taxonomy filter does not pull in posts from child terms and
+	 * returns every matching post, not just the first page.
+	 */
+	function test_get_posts_taxonomy_filter_excludes_child_terms() {
+		global $jekyll_export;
+
+		$parent = wp_insert_term( 'Parent Cat', 'category', array( 'slug' => 'parent-cat' ) );
+		$child  = wp_insert_term(
+			'Child Cat',
+			'category',
+			array(
+				'slug'   => 'child-cat',
+				'parent' => $parent['term_id'],
+			)
+		);
+
+		$in_parent = array();
+		for ( $i = 0; $i < 12; $i++ ) {
+			$in_parent[] = wp_insert_post(
+				array(
+					'post_title'    => 'In parent ' . $i,
+					'post_status'   => 'publish',
+					'post_author'   => self::$author_id,
+					'post_category' => array( $parent['term_id'] ),
+				)
+			);
+		}
+		$in_child = wp_insert_post(
+			array(
+				'post_title'    => 'In child',
+				'post_status'   => 'publish',
+				'post_author'   => self::$author_id,
+				'post_category' => array( $child['term_id'] ),
+			)
+		);
+
+		$filter = function () {
+			return array( 'category' => array( 'parent-cat' ) );
+		};
+		add_filter( 'jekyll_export_taxonomy_filters', $filter );
+
+		try {
+			$posts = $jekyll_export->get_posts();
+		} finally {
+			remove_filter( 'jekyll_export_taxonomy_filters', $filter );
+		}
+
+		$this->assertSame( $in_parent, $posts );
+		$this->assertNotContains( $in_child, $posts );
 	}
 
 	/**

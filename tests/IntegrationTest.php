@@ -139,26 +139,19 @@ class IntegrationTest extends WP_UnitTestCase {
 
 		$this->assertFileExists( $jekyll_export->zip );
 
-		// Extract and verify contents.
-		$extract_dir = get_temp_dir() . 'jekyll-test-extract-' . time();
-		mkdir( $extract_dir );
-
 		$zip = new ZipArchive();
-		$zip->open( $jekyll_export->zip );
-		$zip->extractTo( $extract_dir );
-		$zip->close();
+		$this->assertTrue( $zip->open( $jekyll_export->zip ) );
 
 		// Check for required files and directories.
-		$this->assertTrue( file_exists( $extract_dir . '/_config.yml' ) );
-		$this->assertTrue( is_dir( $extract_dir . '/_posts' ) );
-		$this->assertTrue( is_dir( $extract_dir . '/_drafts' ) );
-		$this->assertTrue( is_dir( $extract_dir . '/wp-content' ) );
+		$this->assertNotFalse( $zip->getFromName( '_config.yml' ) );
+		$this->assertNotFalse( $zip->locateName( '_posts/' ) );
+		$this->assertNotFalse( $zip->locateName( '_drafts/' ) );
+		$this->assertNotFalse( $zip->locateName( 'wp-content/' ) );
 
 		// Check that post file exists in zip.
-		$this->assertTrue( file_exists( $extract_dir . '/_posts/2024-01-01-integration-test-post.md' ) );
+		$this->assertStringContainsString( "title: 'Integration Test Post'", (string) $zip->getFromName( '_posts/2024-01-01-integration-test-post.md' ) );
 
-		// Cleanup.
-		$this->recursive_rmdir( $extract_dir );
+		$zip->close();
 	}
 
 	/**
@@ -304,23 +297,5 @@ class IntegrationTest extends WP_UnitTestCase {
 		// Check that inline image URLs in the body are localized.
 		$this->assertStringNotContainsString( 'http://example.org/wp-content/uploads', $body, 'Absolute image URL should be replaced in post body' );
 		$this->assertStringContainsString( '/wp-content/uploads/test.jpg', $body, 'Relative URL should be present in post body' );
-	}
-
-	/**
-	 * Recursively remove directory
-	 *
-	 * @param string $dir Directory to remove.
-	 */
-	private function recursive_rmdir( $dir ) {
-		if ( ! is_dir( $dir ) ) {
-			return;
-		}
-
-		$files = array_diff( scandir( $dir ), array( '.', '..' ) );
-		foreach ( $files as $file ) {
-			$path = $dir . '/' . $file;
-			is_dir( $path ) ? $this->recursive_rmdir( $path ) : unlink( $path );
-		}
-		rmdir( $dir );
 	}
 }
