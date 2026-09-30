@@ -1,4 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>benbalter/renovate-config:instant"]
+  "extends": ["github>benbalter/renovate-config:instant"],
+  "packageRules": [
+    {
+      "description": "The WordPress core test suite and PHP 8.2 support range need PHPUnit 9",
+      "matchPackageNames": ["phpunit/phpunit"],
+      "allowedVersions": "<10"
+    }
+  ]
 }
