@@ -1,5 +1,19 @@
 ## Changelog
 
+### 4.3.0
+
+This release changes what some exports contain. Review the notes marked **Export change** before re-exporting a site you've exported before.
+
+* **Export change:** Posts are now selected with `WP_Query` and an explicit status list (`publish`, `future`, `draft`, `pending`, `private`, and `inherit`), so trashed posts and pages and auto-drafts are no longer written to `_drafts/`. Custom statuses registered by other plugins (e.g., PublishPress or Edit Flow's `pitch` and `assigned`) are no longer exported either. The list can be changed with the new `jekyll_export_post_statuses` filter
+* **Export change:** Only link and media URLs (`href`, `src`, and each `srcset` candidate) are made relative, and only where the site or home URL is followed by a path, query, or fragment. Absolute site URLs in prose, code samples, and query strings are now kept as written, which fixes exports such as the default privacy policy's "Our website address is: ." Other attributes that pass through as raw HTML, such as the file block's `<object data>`, the video block's `poster`, and inline `background-image` styles, now keep their absolute URLs
+* **Export change:** Posts with `[]: ` in a code sample are now converted to Markdown instead of falling back to raw HTML
+* Grandchild pages and nested upload directories are now exported. `WP_Filesystem_Direct::mkdir()` isn't recursive, so a page written before its parent (lower post ID) silently failed to write; directories are now created with `wp_mkdir_p()`
+* Front-matter `permalink` and `image` values now strip the site and home URLs in both schemes, so featured images on subdirectory or mixed-scheme installs get relative paths
+* Fatal errors during an export (memory or time limits) now show an export-specific message and guidance on core's error page. The previous shutdown handler never ran because core's fatal error handler exits first. The public `shutdown_handler()` method has been removed
+* `--category` and `--tag` for `wp jekyll-export` now also split on whitespace, as well as commas
+* Uses core helpers (`wp_is_writable()`, `mysql2date()`, `cache_users()`) in place of custom code, and the test suite no longer leaves temporary files behind
+* The WordPress.org listing now has a short description and updated tags, and is tested up to WordPress 7.1
+
 ### 4.2.0
 
 * `send()` now discards every output buffer left open by a theme or another plugin before it streams the archive (web requests only; under WP-CLI the caller owns stdout) ([#413](https://github.com/benbalter/wordpress-static-site-exporter/issues/413)). A buffer with a callback (an HTML minifier, a CDN rewriter) would otherwise rewrite the binary zip on its way out, and a buffer opened without a chunk size would hold the entire archive in memory until the export died mid-stream. Both reach the browser as a truncated or unreadable download rather than an error page
