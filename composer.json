@@ -4,7 +4,7 @@
   "require": {
     "php": ">=8.2",
     "league/html-to-markdown": "^5.0",
-    "symfony/yaml": "^7.0"
+    "symfony/yaml": "^8.0"
   },
   "license": "GPLv3 or later",
   "authors": [{
