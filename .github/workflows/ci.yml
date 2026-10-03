@@ -174,7 +174,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
+          ruby-version: '4.0'
 
       # readme.txt is generated from docs/ and committed for WordPress.org.
       # Without this check an edit to docs/ that skips the generator ships a
