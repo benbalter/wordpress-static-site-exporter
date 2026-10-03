@@ -3,6 +3,7 @@
 # readme.txt, and LICENSE.txt.
 /.git
 /.github
+/.claude
 /.devcontainer
 /CLAUDE.md
 /.distignore
