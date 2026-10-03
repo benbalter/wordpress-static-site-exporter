@@ -162,3 +162,27 @@ jobs:
             fi
           done
           echo "Vendor autoload files look clean — no dev dependency references found."
+
+  readme:
+    name: Verify readme.txt is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # script/build-readme is plain Ruby with no gems, so Ruby itself is the
+      # only dependency.
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+
+      # readme.txt is generated from docs/ and committed for WordPress.org.
+      # Without this check an edit to docs/ that skips the generator ships a
+      # stale readme.
+      - name: Regenerate readme.txt and fail on drift
+        run: |
+          script/build-readme
+          if ! git diff --exit-code readme.txt; then
+            echo "::error file=readme.txt::readme.txt is out of date. Run script/build-readme and commit the result."
+            exit 1
+          fi
