@@ -4,6 +4,7 @@
 /.git
 /.github
 /.devcontainer
+/CLAUDE.md
 /.distignore
 /.editorconfig
 /.gitattributes
