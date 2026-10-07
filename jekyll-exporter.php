@@ -725,6 +725,12 @@ class Jekyll_Export {
 				$this->save( $destination );
 			}
 			$this->cleanup();
+
+			// Buffer before firing the action so anything a third-party hook
+			// echoes is discarded rather than appended to the response.
+			ob_start();
+			do_action( 'jekyll_export_complete' );
+			ob_end_clean();
 		} catch ( \Throwable $e ) {
 			// Clean up only output buffers that export() started, leaving any
 			// pre-existing WordPress/admin buffers intact.

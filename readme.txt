@@ -943,6 +943,25 @@ $duration = microtime(true) - $start;
 error_log("Export completed in " . round($duration, 2) . " seconds");
 ```
 
+= Via the `jekyll_export_complete` action =
+
+`jekyll_export_complete` fires once after a successful export, after the archive has been sent or saved and temporary files have been cleaned up. It does not fire when the export fails. Output echoed by a callback is discarded.
+
+```php
+add_action( 'jekyll_export', function() {
+    update_option( 'jekyll_export_start_time', microtime( true ) );
+} );
+
+add_action( 'jekyll_export_complete', function() {
+    $start = get_option( 'jekyll_export_start_time' );
+    if ( $start ) {
+        $duration = microtime( true ) - $start;
+        error_log( sprintf( 'Jekyll export completed in %.2f seconds', $duration ) );
+        delete_option( 'jekyll_export_start_time' );
+    }
+} );
+```
+
 == Database Optimization ==
 
 Before exporting, optimize your database:
