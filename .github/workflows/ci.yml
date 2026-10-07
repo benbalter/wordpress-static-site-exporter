@@ -29,7 +29,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:9.7
+        image: mysql:26.7
         env:
           MYSQL_ROOT_PASSWORD: 'root'
         ports:
@@ -174,7 +174,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
+          ruby-version: '4.0'
 
       # readme.txt is generated from docs/ and committed for WordPress.org.
       # Without this check an edit to docs/ that skips the generator ships a
