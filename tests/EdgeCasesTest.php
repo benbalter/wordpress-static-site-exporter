@@ -580,6 +580,48 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that jekyll_export_complete does not fire when the export fails.
+	 */
+	function test_jekyll_export_complete_does_not_fire_when_export_fails() {
+		global $jekyll_export;
+
+		$calls    = 0;
+		$callback = function () use ( &$calls ) {
+			++$calls;
+		};
+		add_action( 'jekyll_export_complete', $callback );
+
+		// Add a filter that throws an exception during post conversion.
+		$this->exception_filter_callback = function ( $meta, $post ) {
+			throw new \Exception( 'Test exception during export' );
+		};
+		add_filter( 'jekyll_export_post_meta', $this->exception_filter_callback, 10, 2 );
+
+		// Create a post so convert_posts processes something.
+		wp_insert_post(
+			array(
+				'post_title'   => 'Exception Test',
+				'post_content' => 'Content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		$before = did_action( 'jekyll_export_complete' );
+
+		try {
+			$jekyll_export->export();
+			$this->fail( 'Expected export to abort when conversion throws.' );
+		} catch ( WPDieException $e ) {
+			$this->assertStringContainsString( 'Test exception during export', $e->getMessage() );
+			$this->assertSame( 0, $calls, 'jekyll_export_complete should not fire when the export fails.' );
+			$this->assertSame( $before, did_action( 'jekyll_export_complete' ) );
+		} finally {
+			remove_action( 'jekyll_export_complete', $callback );
+		}
+	}
+
+	/**
 	 * Test that convert_content() falls back to raw HTML when the
 	 * HTML-to-Markdown converter throws InvalidArgumentException, rather than
 	 * aborting the entire export.
