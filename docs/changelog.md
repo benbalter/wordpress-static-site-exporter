@@ -1,5 +1,14 @@
 ## Changelog
 
+### 4.4.0
+
+This release updates the HTML-to-Markdown converter for security fixes, which changes some converted Markdown. Review the note marked **Export change** before re-exporting a site you've exported before.
+
+* **Export change:** Updated `league/html-to-markdown` to 5.1.3, a security release. Content inside `<pre>` and `<code>`, attribute values of HTML kept as-is, and the `href`, `src`, `title`, and `alt` of links and images could previously break out of the Markdown they were written into ([GHSA-8m5h-gv5q-jmp5](https://github.com/thephpleague/html-to-markdown/security/advisories/GHSA-8m5h-gv5q-jmp5), [GHSA-vc6h-86x6-wcjg](https://github.com/thephpleague/html-to-markdown/security/advisories/GHSA-vc6h-86x6-wcjg), [GHSA-r2cp-59h5-vgjj](https://github.com/thephpleague/html-to-markdown/security/advisories/GHSA-r2cp-59h5-vgjj)). The fixes change how backticks, pipes, and link and image attributes are escaped, and keep some code as HTML. See the [upstream changelog](https://github.com/thephpleague/html-to-markdown/blob/5.1.3/CHANGELOG.md#513---2026-10-05) for the full list
+* The `jekyll_export_meta`, `jekyll_export_terms`, `jekyll_export_markdown`, `jekyll_export_html`, and `jekyll_export_content` filters now receive the post being exported as a second argument, so output can be customized per post. Existing one-argument callbacks are unaffected ([#463](https://github.com/benbalter/wordpress-static-site-exporter/pull/463)). Thanks to [@theluckystrike](https://github.com/theluckystrike)
+* The `jekyll_export_complete` action now fires once after a successful export, after the archive is sent or saved. It does not fire if the export fails. The action was documented, but the plugin never fired it ([#459](https://github.com/benbalter/wordpress-static-site-exporter/pull/459)). Thanks to [@Anandb71](https://github.com/Anandb71)
+* Updated `symfony/yaml` to 7.4.20 (parser fixes only; the exporter only writes YAML)
+
 ### 4.3.0
 
 This release changes what some exports contain. Review the notes marked **Export change** before re-exporting a site you've exported before.
