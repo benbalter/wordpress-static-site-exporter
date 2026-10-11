@@ -277,7 +277,7 @@ class Jekyll_Export {
 			}
 		}
 
-		$output = apply_filters( 'jekyll_export_meta', $output );
+		$output = apply_filters( 'jekyll_export_meta', $output, $post );
 		return $output;
 	}
 
@@ -315,7 +315,7 @@ class Jekyll_Export {
 			}
 		}
 
-		$output = apply_filters( 'jekyll_export_terms', $output );
+		$output = apply_filters( 'jekyll_export_terms', $output, $post );
 		return $output;
 	}
 
@@ -489,24 +489,25 @@ class Jekyll_Export {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
 			}
-			return $this->html_fallback( $html );
+			return $this->html_fallback( $html, $post );
 		}
 
-		$markdown = apply_filters( 'jekyll_export_markdown', $markdown );
-		$markdown = apply_filters( 'jekyll_export_content', $markdown );
+		$markdown = apply_filters( 'jekyll_export_markdown', $markdown, $post );
+		$markdown = apply_filters( 'jekyll_export_content', $markdown, $post );
 		return $markdown;
 	}
 
 	/**
 	 * Apply the raw-HTML fallback filters when Markdown conversion is skipped or fails.
 	 *
-	 * @param string $content the raw HTML content, before URL localization.
+	 * @param string  $content the raw HTML content, before URL localization.
+	 * @param WP_Post $post the post being exported.
 	 * @return string the filtered fallback content.
 	 */
-	private function html_fallback( $content ) {
+	private function html_fallback( $content, $post ) {
 		$content = $this->localize_urls_in_text( $content );
-		$content = apply_filters( 'jekyll_export_html', $content );
-		return apply_filters( 'jekyll_export_content', $content );
+		$content = apply_filters( 'jekyll_export_html', $content, $post );
+		return apply_filters( 'jekyll_export_content', $content, $post );
 	}
 
 	/**

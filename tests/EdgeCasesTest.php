@@ -664,6 +664,58 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the raw-HTML fallback passes the post to the jekyll_export_html
+	 * and jekyll_export_content filters when they take a second argument.
+	 */
+	function test_html_fallback_filters_receive_post() {
+		global $jekyll_export;
+
+		$stub = new class() {
+			public function convert( string $html ): string {
+				throw new \InvalidArgumentException( 'Invalid HTML was provided' );
+			}
+		};
+
+		$converter = function () use ( $stub ) {
+			return $stub;
+		};
+		add_filter( 'jekyll_export_html_converter', $converter );
+
+		$received  = array();
+		$callbacks = array();
+		foreach ( array( 'jekyll_export_html', 'jekyll_export_content' ) as $filter ) {
+			$callbacks[ $filter ] = function ( $value, $filter_post ) use ( $filter, &$received ) {
+				$received[ $filter ] = $filter_post;
+				return $value;
+			};
+			add_filter( $filter, $callbacks[ $filter ], 10, 2 );
+		}
+
+		try {
+			$post_id = wp_insert_post(
+				array(
+					'post_title'   => 'Fallback Filter Post',
+					'post_content' => '<p>Content the stub converter will reject.</p>',
+					'post_status'  => 'publish',
+					'post_author'  => self::$author_id,
+				)
+			);
+
+			$jekyll_export->convert_content( get_post( $post_id ) );
+
+			foreach ( array_keys( $callbacks ) as $filter ) {
+				$this->assertArrayHasKey( $filter, $received, $filter . ' should have fired' );
+				$this->assertSame( $post_id, $received[ $filter ]->ID, $filter . ' should receive the post' );
+			}
+		} finally {
+			remove_filter( 'jekyll_export_html_converter', $converter );
+			foreach ( $callbacks as $filter => $callback ) {
+				remove_filter( $filter, $callback, 10 );
+			}
+		}
+	}
+
+	/**
 	 * Test that convert_content() also falls back to raw HTML when the converter
 	 * throws a Throwable other than InvalidArgumentException (e.g. RuntimeException),
 	 * so an unexpected converter error can't abort the entire export.

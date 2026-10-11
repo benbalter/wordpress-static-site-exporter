@@ -428,7 +428,7 @@ When using custom fields (e.g. with the Advanced Custom fields plugin) you might
 
 The plugin provides two filters for customizing post metadata:
 
-- **`jekyll_export_meta`**: Filters the metadata for a single post before it's merged with taxonomy terms. Receives `$meta` array as the only parameter.
+- **`jekyll_export_meta`**: Filters the metadata for a single post before it's merged with taxonomy terms. Receives `$meta` array and `$post` object as parameters.
 - **`jekyll_export_post_meta`**: Filters the complete metadata array (including taxonomy terms) just before it's written to the YAML frontmatter. Receives `$meta` array and `$post` object as parameters. This is the recommended filter for most use cases.
 
 **Note:** As of the latest version, the plugin no longer automatically removes empty or falsy values from the frontmatter. All metadata is preserved by default. If you want to remove certain fields, you can use the `jekyll_export_post_meta` filter to customize this behavior.
