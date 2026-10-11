@@ -418,6 +418,50 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the meta, terms, markdown and content filters pass the post
+	 * as their second argument to a callback registered with accepted_args 2.
+	 */
+	function test_filters_receive_post() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Filter Post',
+				'post_content' => 'Filter content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+		$post = get_post( $post_id );
+
+		$filters   = array( 'jekyll_export_meta', 'jekyll_export_terms', 'jekyll_export_markdown', 'jekyll_export_content' );
+		$received  = array();
+		$callbacks = array();
+		foreach ( $filters as $filter ) {
+			$callbacks[ $filter ] = function ( $value, $filter_post ) use ( $filter, &$received ) {
+				$received[ $filter ] = $filter_post;
+				return $value;
+			};
+			add_filter( $filter, $callbacks[ $filter ], 10, 2 );
+		}
+
+		try {
+			$jekyll_export->convert_meta( $post );
+			$jekyll_export->convert_terms( $post );
+			$jekyll_export->convert_content( $post );
+
+			foreach ( $filters as $filter ) {
+				$this->assertArrayHasKey( $filter, $received, $filter . ' should have fired' );
+				$this->assertSame( $post_id, $received[ $filter ]->ID, $filter . ' should receive the post' );
+			}
+		} finally {
+			foreach ( $callbacks as $filter => $callback ) {
+				remove_filter( $filter, $callback, 10 );
+			}
+		}
+	}
+
+	/**
 	 * Test that it exports site options to the site config
 	 */
 	function test_export_options() {
