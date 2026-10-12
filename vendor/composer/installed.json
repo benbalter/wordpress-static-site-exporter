@@ -514,17 +514,17 @@
         },
         {
             "name": "league/html-to-markdown",
-            "version": "5.1.3",
-            "version_normalized": "5.1.3.0",
+            "version": "5.1.4",
+            "version_normalized": "5.1.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/html-to-markdown.git",
-                "reference": "5411b9650dd468be52267a6f4a2a26c31d2581be"
+                "reference": "0be46a17d8e42ff5522d935b1b182a283bf7378d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/html-to-markdown/zipball/5411b9650dd468be52267a6f4a2a26c31d2581be",
-                "reference": "5411b9650dd468be52267a6f4a2a26c31d2581be",
+                "url": "https://api.github.com/repos/thephpleague/html-to-markdown/zipball/0be46a17d8e42ff5522d935b1b182a283bf7378d",
+                "reference": "0be46a17d8e42ff5522d935b1b182a283bf7378d",
                 "shasum": ""
             },
             "require": {
@@ -540,7 +540,7 @@
                 "unleashedtech/php-coding-standard": "^2.7 || ^3.0",
                 "vimeo/psalm": "^4.22 || ^5.0 || ^6.0"
             },
-            "time": "2026-10-06T01:08:41+00:00",
+            "time": "2026-10-10T16:25:01+00:00",
             "bin": [
                 "bin/html-to-markdown"
             ],
@@ -582,7 +582,7 @@
             ],
             "support": {
                 "issues": "https://github.com/thephpleague/html-to-markdown/issues",
-                "source": "https://github.com/thephpleague/html-to-markdown/tree/5.1.3"
+                "source": "https://github.com/thephpleague/html-to-markdown/tree/5.1.4"
             },
             "funding": [
                 {
@@ -939,17 +939,17 @@
         },
         {
             "name": "php-stubs/wordpress-stubs",
-            "version": "v7.1.0",
-            "version_normalized": "7.1.0.0",
+            "version": "v7.1.2",
+            "version_normalized": "7.1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-stubs/wordpress-stubs.git",
-                "reference": "394570301894799e69a4aa117c9c995427e3ba04"
+                "reference": "6926c5156431a3ff909d43faa16a92a0bc0c2428"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/394570301894799e69a4aa117c9c995427e3ba04",
-                "reference": "394570301894799e69a4aa117c9c995427e3ba04",
+                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/6926c5156431a3ff909d43faa16a92a0bc0c2428",
+                "reference": "6926c5156431a3ff909d43faa16a92a0bc0c2428",
                 "shasum": ""
             },
             "conflict": {
@@ -972,7 +972,7 @@
                 "symfony/polyfill-php80": "Symfony polyfill backporting some PHP 8.0+ features to lower PHP versions",
                 "szepeviktor/phpstan-wordpress": "WordPress extensions for PHPStan"
             },
-            "time": "2026-08-28T00:32:06+00:00",
+            "time": "2026-10-06T06:59:21+00:00",
             "type": "library",
             "installation-source": "dist",
             "notification-url": "https://packagist.org/downloads/",
@@ -988,7 +988,7 @@
             ],
             "support": {
                 "issues": "https://github.com/php-stubs/wordpress-stubs/issues",
-                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v7.1.0"
+                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v7.1.2"
             },
             "install-path": "../php-stubs/wordpress-stubs"
         },
@@ -1175,12 +1175,12 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.2.17",
-            "version_normalized": "2.2.17.0",
+            "version": "2.3.1",
+            "version_normalized": "2.3.1.0",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/e676a49fa70cee9f5bf6ff4796186b928a08673f",
-                "reference": "e676a49fa70cee9f5bf6ff4796186b928a08673f",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/6155239b488e95d26d1ebd95c6b4bb294d7f09db",
+                "reference": "6155239b488e95d26d1ebd95c6b4bb294d7f09db",
                 "shasum": ""
             },
             "require": {
@@ -1189,7 +1189,7 @@
             "conflict": {
                 "phpstan/phpstan-shim": "*"
             },
-            "time": "2026-10-04T19:40:09+00:00",
+            "time": "2026-10-08T21:09:11+00:00",
             "bin": [
                 "phpstan",
                 "phpstan.phar"
@@ -4481,17 +4481,17 @@
         },
         {
             "name": "wp-cli/mustangostang-spyc",
-            "version": "0.6.6",
-            "version_normalized": "0.6.6.0",
+            "version": "0.6.7",
+            "version_normalized": "0.6.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wp-cli/spyc.git",
-                "reference": "30f25baaaba939caaff1f4b8c7ed998632f59fe2"
+                "reference": "8adbd399bc819c19e36f4aab0aeeb3b918793e1c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wp-cli/spyc/zipball/30f25baaaba939caaff1f4b8c7ed998632f59fe2",
-                "reference": "30f25baaaba939caaff1f4b8c7ed998632f59fe2",
+                "url": "https://api.github.com/repos/wp-cli/spyc/zipball/8adbd399bc819c19e36f4aab0aeeb3b918793e1c",
+                "reference": "8adbd399bc819c19e36f4aab0aeeb3b918793e1c",
                 "shasum": ""
             },
             "require": {
@@ -4500,7 +4500,7 @@
             "require-dev": {
                 "phpunit/phpunit": "4.3.*@dev"
             },
-            "time": "2026-03-12T12:30:41+00:00",
+            "time": "2026-10-06T08:59:48+00:00",
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -4529,7 +4529,7 @@
             "description": "A simple YAML loader/dumper class for PHP (WP-CLI fork)",
             "homepage": "https://github.com/mustangostang/spyc/",
             "support": {
-                "source": "https://github.com/wp-cli/spyc/tree/0.6.6"
+                "source": "https://github.com/wp-cli/spyc/tree/0.6.7"
             },
             "install-path": "../wp-cli/mustangostang-spyc"
         },
