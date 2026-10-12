@@ -1736,4 +1736,32 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		unset( $_GET['type'] );
 		wp_set_current_user( 0 );
 	}
+
+	/**
+	 * Test that html-to-markdown 5.1.3 escapes a backtick inside inline code
+	 * and a quote inside a link title, so a future converter bump shows the
+	 * export change in CI.
+	 */
+	function test_pins_html_to_markdown_escaping() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Escaping Test',
+				'post_content' => '<p>Run <code>`foo`</code> now, then read <a href="https://example.com" title="He said &quot;hi&quot;">the page</a>.</p>',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		$post    = get_post( $post_id );
+		$content = $jekyll_export->convert_content( $post );
+
+		// The inline code keeps its inner backtick by wrapping in double backticks.
+		$this->assertStringContainsString( '`` `foo` ``', $content );
+
+		// The link title hides its quote in an entity so it stays inside the title.
+		$this->assertStringContainsString( '&quot;hi&quot;', $content );
+		$this->assertStringNotContainsString( '"hi"', $content );
+	}
 }
