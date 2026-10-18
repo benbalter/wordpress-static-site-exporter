@@ -6,7 +6,7 @@
     "league/html-to-markdown": "^5.0",
     "symfony/yaml": "^7.0"
   },
-  "license": "GPLv3 or later",
+  "license": "GPL-3.0-or-later",
   "authors": [{
     "name": "Ben Balter",
     "email": "ben@balter.com"
