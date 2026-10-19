@@ -43,6 +43,14 @@ class HtmlConverter implements HtmlConverterInterface
     private $isInsideCleanTable = false;
 
     /**
+     * Whether the element being converted is inside of inline Markdown, which is worked out once for each element
+     * since it can take time proportional to the size of what came before an ancestor
+     *
+     * @var bool
+     */
+    private $isInsideInlineMarkdown = false;
+
+    /**
      * Constructor
      *
      * @param Environment|array<string, mixed> $options Environment object or configuration options
@@ -118,15 +126,23 @@ class HtmlConverter implements HtmlConverterInterface
             throw new \InvalidArgumentException('Invalid HTML was provided');
         }
 
-        $this->isAfterRawHtml     = false;
-        $this->isInsideCleanTable = false;
+        // A converter could convert other HTML with this same instance partway through an element
+        $wasInsideInlineMarkdown = $this->isInsideInlineMarkdown;
+
+        $this->isAfterRawHtml         = false;
+        $this->isInsideCleanTable     = false;
+        $this->isInsideInlineMarkdown = false;
 
         $flattensTableCells = ! $this->environment->getConverterByTag('td') instanceof DefaultConverter;
         $this->getConfig()->setOption(RawHtml::FLATTENS_TABLE_CELLS, $flattensTableCells);
         $this->getConfig()->setOption(RawHtml::KEEPS_ALL_CODE_AS_HTML, $flattensTableCells && $this->hasMalformedTable($document));
 
         $rootElement = new Element($root);
-        $this->convertChildren($rootElement);
+        try {
+            $this->convertChildren($rootElement);
+        } finally {
+            $this->isInsideInlineMarkdown = $wasInsideInlineMarkdown;
+        }
 
         // Store the now-modified DOMDocument as a string
         $markdown = $document->saveHTML();
@@ -140,21 +156,26 @@ class HtmlConverter implements HtmlConverterInterface
 
     private function createDOMDocument(string $html): \DOMDocument
     {
-        $document = new \DOMDocument();
+        $document                 = new \DOMDocument();
+        $suppressErrors           = (bool) $this->getConfig()->getOption('suppress_errors');
+        $previousLibxmlErrorState = false;
 
-        if ($this->getConfig()->getOption('suppress_errors')) {
+        if ($suppressErrors) {
             // Suppress conversion errors (from http://bit.ly/pCCRSX)
-            \libxml_use_internal_errors(true);
+            $previousLibxmlErrorState = \libxml_use_internal_errors(true);
         }
 
-        // Hack to load utf-8 HTML (from http://bit.ly/pVDyCt)
-        $document->loadHTML('<?xml encoding="UTF-8">' . $html);
-        $document->encoding = 'UTF-8';
+        try {
+            // Hack to load utf-8 HTML (from http://bit.ly/pVDyCt)
+            $document->loadHTML('<?xml encoding="UTF-8">' . $html);
+            $document->encoding = 'UTF-8';
 
-        $this->replaceMisplacedComments($document);
-
-        if ($this->getConfig()->getOption('suppress_errors')) {
-            \libxml_clear_errors();
+            $this->replaceMisplacedComments($document);
+        } finally {
+            if ($suppressErrors) {
+                \libxml_clear_errors();
+                \libxml_use_internal_errors($previousLibxmlErrorState);
+            }
         }
 
         return $document;
@@ -170,30 +191,29 @@ class HtmlConverter implements HtmlConverterInterface
      */
     private function replaceMisplacedComments(\DOMDocument $document): void
     {
-        // Find ny comment nodes at the root of the document.
-        $misplacedComments = (new \DOMXPath($document))->query('/comment() | /processing-instruction()[name() != "xml"]');
-        if ($misplacedComments === false) {
-            return;
-        }
-
         $body = $document->getElementsByTagName('body')->item(0);
         if ($body === null) {
             return;
         }
 
-        // Loop over comment nodes in reverse so we put them inside <body> in
-        // their original order.
-        for ($index = $misplacedComments->length - 1; $index >= 0; $index--) {
-            // DOMNameSpaceNode, which item() can also return, isn't a DOMNode and can't be inserted.
-            $comment = $misplacedComments->item($index);
-            if (! $comment instanceof \DOMNode) {
-                continue;
+        // Collected first, since moving them changes the list
+        $misplaced = [];
+        foreach ($document->childNodes as $node) {
+            // PHPStan 1.x, which is what PHP 7.2 resolves to, has no generic type for
+            // DOMNodeList and infers mixed here.
+            /** @psalm-suppress RedundantCondition */
+            \assert($node instanceof \DOMNode);
+            if ($node->nodeType === XML_COMMENT_NODE || ($node->nodeType === XML_PI_NODE && $node->nodeName !== 'xml')) {
+                $misplaced[] = $node;
             }
+        }
 
-            if ($body->firstChild === null) {
-                $body->insertBefore($comment);
+        $firstChild = $body->firstChild;
+        foreach ($misplaced as $node) {
+            if ($firstChild === null) {
+                $body->appendChild($node);
             } else {
-                $body->insertBefore($comment, $body->firstChild);
+                $body->insertBefore($node, $firstChild);
             }
         }
     }
@@ -211,6 +231,11 @@ class HtmlConverter implements HtmlConverterInterface
         // Don't convert HTML code inside <code> and <pre> blocks to Markdown - that should stay as HTML
         // except if the current node is a code tag, which needs to be converted by the CodeConverter.
         if ($element->isDescendantOf(['pre', 'code']) && $element->getTagName() !== 'code') {
+            return;
+        }
+
+        // Code kept as HTML takes the text of any code inside of it as it is
+        if ($element->isDescendantOf('code') && ! $element->isDescendantOf('pre') && $this->isWhereMarkdownMightNotBeParsed($element)) {
             return;
         }
 
@@ -239,10 +264,14 @@ class HtmlConverter implements HtmlConverterInterface
         }
 
         // If the node has children, convert those to Markdown first
+        $isInsideInlineMarkdown = $this->isInsideInlineMarkdown;
         if ($element->hasChildren()) {
+            $this->isInsideInlineMarkdown = $isInsideInlineMarkdown || RawHtml::putsContentsInline($element, $this->getConfig()->getOption(RawHtml::FLATTENS_TABLE_CELLS) === true);
             foreach ($element->getChildren() as $child) {
                 $this->convertChildren($child);
             }
+
+            $this->isInsideInlineMarkdown = $isInsideInlineMarkdown;
         }
 
         if ($isCleanTable) {
@@ -254,7 +283,12 @@ class HtmlConverter implements HtmlConverterInterface
         if ($tag === 'code' && ! $element->isDescendantOf('pre') && $this->isWhereMarkdownMightNotBeParsed($element)) {
             $markdown = $this->isRemoved($tag) ? '' : RawHtml::fromCode(RawHtml::getCode($element));
         } else {
-            $markdown = $this->convertToMarkdown($element);
+            $this->getConfig()->setOption(RawHtml::IS_INSIDE_INLINE_MARKDOWN, $isInsideInlineMarkdown);
+            try {
+                $markdown = $this->convertToMarkdown($element);
+            } finally {
+                $this->getConfig()->setOption(RawHtml::IS_INSIDE_INLINE_MARKDOWN, null);
+            }
         }
 
         if ($startsHtmlBlock) {
@@ -329,19 +363,40 @@ class HtmlConverter implements HtmlConverterInterface
         $notSection = 'not(self::caption or self::colgroup or self::thead or self::tbody or self::tfoot or self::tr)';
         $other      = $this->getConfig()->getOption('preserve_comments') ? 'node()[self::processing-instruction() or self::comment()]' : 'processing-instruction()';
 
-        $query = \implode(' | ', [
+        $paths = [
             '//table//table',
-            '//tr[not(ancestor::table)] | //td[not(parent::tr)] | //th[not(parent::tr)] | //col[not(ancestor::table)]',
-            '//caption[not(parent::table)] | //colgroup[not(parent::table)]',
-            '//thead[not(parent::table)] | //tbody[not(parent::table)] | //tfoot[not(parent::table)]',
-            '//table/*[' . $notSection . '] | //thead/*[' . $notRow . '] | //tbody/*[' . $notRow . '] | //tfoot/*[' . $notRow . ']',
+            '//tr[not(ancestor::table)]',
+            '//td[not(parent::tr)]',
+            '//th[not(parent::tr)]',
+            '//col[not(ancestor::table)]',
+            '//caption[not(parent::table)]',
+            '//colgroup[not(parent::table)]',
+            '//thead[not(parent::table)]',
+            '//tbody[not(parent::table)]',
+            '//tfoot[not(parent::table)]',
+            '//table/*[' . $notSection . ']',
+            '//thead/*[' . $notRow . ']',
+            '//tbody/*[' . $notRow . ']',
+            '//tfoot/*[' . $notRow . ']',
             '//tr/*[not(self::td or self::th)]',
-            \str_replace('X', $other, '//table/X | //thead/X | //tbody/X | //tfoot/X | //tr/X'),
-        ]);
+            '//table/' . $other,
+            '//thead/' . $other,
+            '//tbody/' . $other,
+            '//tfoot/' . $other,
+            '//tr/' . $other,
+        ];
 
-        $nodes = (new \DOMXPath($document))->query($query);
+        // Unlike a query, counting doesn't put the nodes in document order, which can take time
+        // proportional to the square of how many there are, as can combining them in a union
+        $xpath = new \DOMXPath($document);
+        foreach ($paths as $path) {
+            $count = $xpath->evaluate('count(' . $path . ')');
+            if (! \is_float($count) || $count > 0) {
+                return true;
+            }
+        }
 
-        return $nodes === false || $nodes->length > 0;
+        return false;
     }
 
     private function isWhereMarkdownMightNotBeParsed(ElementInterface $element): bool
@@ -361,7 +416,7 @@ class HtmlConverter implements HtmlConverterInterface
     private function isCleanTable(ElementInterface $element, ConverterInterface $converter): bool
     {
         return ! $converter instanceof DefaultConverter
-            && ! $this->isInsideInlineMarkdown($element)
+            && ! $this->isInsideInlineMarkdown()
             && ! $this->containsHtml($element);
     }
 
@@ -390,9 +445,9 @@ class HtmlConverter implements HtmlConverterInterface
         return false;
     }
 
-    private function isInsideInlineMarkdown(ElementInterface $element): bool
+    private function isInsideInlineMarkdown(): bool
     {
-        return RawHtml::isInsideInlineMarkdown($element, $this->getConfig()->getOption(RawHtml::FLATTENS_TABLE_CELLS) === true);
+        return $this->isInsideInlineMarkdown;
     }
 
     private function isKeptAsHtml(ElementInterface $element, ConverterInterface $converter): bool
@@ -464,7 +519,7 @@ class HtmlConverter implements HtmlConverterInterface
      */
     private function startsOnOwnLine(ElementInterface $element, ConverterInterface $converter): bool
     {
-        if ($converter instanceof DefaultConverter || $this->isInsideInlineMarkdown($element)) {
+        if ($converter instanceof DefaultConverter || $this->isInsideInlineMarkdown()) {
             return false;
         }
 
@@ -500,18 +555,26 @@ class HtmlConverter implements HtmlConverterInterface
     private function getLeadingBlankLine(ElementInterface $element, ConverterInterface $converter): string
     {
         $tag = $element->getTagName();
-        if (! \in_array($tag, ['blockquote', 'ol', 'pre', 'table', 'ul'], true) && ! $this->isOutsideOfItsContainer($element, $converter)) {
+
+        // These would otherwise be run into the inline Markdown before them, such as an image.
+        // On the same line as raw HTML, they can't be parsed as Markdown either way.
+        $isParagraphLike = \in_array($tag, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p'], true);
+        if ($isParagraphLike && $this->isAfterRawHtml) {
             return '';
         }
 
-        if ($converter instanceof DefaultConverter || $this->isInsideInlineMarkdown($element) || $this->followsBlankLine($element)) {
+        if (! $isParagraphLike && ! \in_array($tag, ['blockquote', 'ol', 'pre', 'table', 'ul'], true) && ! $this->isOutsideOfItsContainer($element, $converter)) {
+            return '';
+        }
+
+        if ($converter instanceof DefaultConverter || $this->isInsideInlineMarkdown() || $this->followsBlankLine($element)) {
             return '';
         }
 
         // A list inside of another is already put on a line of its own, which is enough to continue the outer one
         $parent   = $element->getParent();
         $isNested = $parent !== null && ($parent->getTagName() === 'li' || (\in_array($parent->getTagName(), ['ol', 'ul'], true) && RawHtml::startsLine($element)));
-        if (! $this->isAfterRawHtml && $tag !== 'pre' && $tag !== 'blockquote' && $tag !== 'table' && $isNested) {
+        if (! $this->isAfterRawHtml && \in_array($tag, ['ol', 'ul', 'li', 'tr'], true) && $isNested) {
             return '';
         }
 
@@ -576,7 +639,7 @@ class HtmlConverter implements HtmlConverterInterface
 
         return \in_array($element->getTagName(), $tags, true)
             && ! $converter instanceof DefaultConverter
-            && ! $this->isInsideInlineMarkdown($element)
+            && ! $this->isInsideInlineMarkdown()
             && \substr($markdown, -2) === "\n\n";
     }
 
