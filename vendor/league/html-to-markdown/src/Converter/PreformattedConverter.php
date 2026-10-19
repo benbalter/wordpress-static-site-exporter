@@ -31,16 +31,17 @@ class PreformattedConverter implements ConverterInterface, ConfigurationAwareInt
 
     private function getContent(ElementInterface $element): string
     {
-        $preContent = \html_entity_decode($element->getChildrenAsString());
-        $preContent = \preg_replace('/<pre\b[^>]*>/', '', $preContent);
-        \assert($preContent !== null);
-
-        return \str_replace('</pre>', '', $preContent);
+        return RawHtml::getContentWithoutTags($element, ['pre']);
     }
 
     private function convertToFencedCodeBlock(ElementInterface $element): string
     {
         $preContent = $this->getContent($element);
+
+        // A newline right after the <pre> start tag is not part of the content (HTML spec), but the parser keeps it.
+        // Not done in getContent(), as a <pre> kept as raw HTML gets this newline dropped when it is rendered.
+        $preContent = \preg_replace('/^(?:\r\n|\r|\n)/', '', $preContent);
+        \assert($preContent !== null);
 
         // A nested code tag has already been converted into a fenced code block, so there's nothing more to convert
         $trimmedContent = \trim($preContent);

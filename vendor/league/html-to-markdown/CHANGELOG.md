@@ -4,6 +4,47 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased][unreleased]
 
+## [5.2.3] - 2026-10-19
+
+### Security
+
+- Fixed the time taken to convert certain documents growing with the square of their size, rather than in proportion to it (GHSA-4xjf-2r66-5r28). This affected a long run of backslashes before inline code, content after a large list item, many comments or processing instructions outside of `<html>`, and processing instructions anywhere, as well as misplaced table parts and long runs of backslashes in table cells when `TableConverter` is used.
+
+### Fixed
+
+- Fixed text inside of `<pre>` and `<code>` which looked like those tags, such as `&lt;/pre&gt;`, being removed
+- Fixed attribute values of `<pre>` and `<code>` containing `>` being output as part of their content
+- Fixed code nested inside of other code which is kept as HTML being encoded twice
+
+## [5.2.2] - 2026-10-18
+
+### Fixed
+
+- Fixed the `suppress_errors` option leaving libxml's internal error handling enabled after conversion, which affected later XML handling elsewhere in the application (#268, #269)
+
+## [5.2.1] - 2026-10-18
+
+### Fixed
+
+- Fixed links whose text is a URL with percent-encoded characters shown decoded, such as `/` for `%2F`, not being output as autolinks (#248, #284). The autolink keeps the encoded URL.
+- Fixed links whose text is a URL containing `_` or `*` not being output as autolinks
+
+## [5.2.0] - 2026-10-18
+
+### Changed
+
+- Non-breaking spaces, as well as narrow no-break and figure spaces, are now kept as they are rather than being converted to regular spaces, so that text such as `12,50&nbsp;€` stays on one line (#258, #283). They're output as the characters themselves, not as `&nbsp;`. Where whitespace is dropped or trimmed, as in text consisting only of whitespace before a block and at the ends of paragraphs, list items, blockquotes and table cells, they now are too, so those used only for spacing still leave nothing behind.
+- Emphasis next to a non-breaking space now has it moved outside of its delimiters, which couldn't otherwise be recognized
+
+### Fixed
+
+- Fixed headings, paragraphs and horizontal rules being output on the same line as inline content directly before them, such as an image, including inside list items (#259, #282)
+- Fixed an extra blank line at the start of a code block converted from a `<pre>` whose content starts with a newline (#244, #278)
+- Fixed links whose text is a URL containing `&` not being output as autolinks (#248, #281)
+- Fixed a line consisting of only `-` or `+` not being escaped, which made it an empty list item
+- Fixed a non-breaking space being removed from the start of a blockquote, list item or table caption, which could leave text starting with `- ` to be taken as a list
+- Fixed whitespace between a block and a following `<pre>` or `<table>` being output on a line of its own
+
 ## [5.1.4] - 2026-10-10
 
 ### Security
@@ -373,7 +414,11 @@ not ideally set, so this releases fixes that. Moving forwards this should reduce
 ### Added
  - Initial release
 
-[unreleased]: https://github.com/thephpleague/html-to-markdown/compare/5.1.4...master
+[unreleased]: https://github.com/thephpleague/html-to-markdown/compare/5.2.3...master
+[5.2.3]: https://github.com/thephpleague/html-to-markdown/compare/5.2.2...5.2.3
+[5.2.2]: https://github.com/thephpleague/html-to-markdown/compare/5.2.1...5.2.2
+[5.2.1]: https://github.com/thephpleague/html-to-markdown/compare/5.2.0...5.2.1
+[5.2.0]: https://github.com/thephpleague/html-to-markdown/compare/5.1.4...5.2.0
 [5.1.4]: https://github.com/thephpleague/html-to-markdown/compare/5.1.3...5.1.4
 [5.1.3]: https://github.com/thephpleague/html-to-markdown/compare/5.1.2...5.1.3
 [5.1.2]: https://github.com/thephpleague/html-to-markdown/compare/5.1.1...5.1.2
