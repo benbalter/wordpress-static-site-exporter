@@ -12,7 +12,7 @@
  * Plugin Name: Static Site Exporter
  * Plugin URI:  https://github.com/benbalter/wordpress-to-jekyll-exporter/
  * Description: One-click plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML for Jekyll, Hugo, or other static site generators.
- * Version:     4.3.0
+ * Version:     4.4.0
  * Author:      Ben Balter
  * Author URI:  https://ben.balter.com
  * Text Domain: jekyll-exporter
@@ -277,7 +277,7 @@ class Jekyll_Export {
 			}
 		}
 
-		$output = apply_filters( 'jekyll_export_meta', $output );
+		$output = apply_filters( 'jekyll_export_meta', $output, $post );
 		return $output;
 	}
 
@@ -315,7 +315,7 @@ class Jekyll_Export {
 			}
 		}
 
-		$output = apply_filters( 'jekyll_export_terms', $output );
+		$output = apply_filters( 'jekyll_export_terms', $output, $post );
 		return $output;
 	}
 
@@ -489,24 +489,25 @@ class Jekyll_Export {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( '[jekyll-export] HTML-to-Markdown conversion failed for post %d: %s. Falling back to raw HTML.', $post_id, $e->getMessage() ) );
 			}
-			return $this->html_fallback( $html );
+			return $this->html_fallback( $html, $post );
 		}
 
-		$markdown = apply_filters( 'jekyll_export_markdown', $markdown );
-		$markdown = apply_filters( 'jekyll_export_content', $markdown );
+		$markdown = apply_filters( 'jekyll_export_markdown', $markdown, $post );
+		$markdown = apply_filters( 'jekyll_export_content', $markdown, $post );
 		return $markdown;
 	}
 
 	/**
 	 * Apply the raw-HTML fallback filters when Markdown conversion is skipped or fails.
 	 *
-	 * @param string $content the raw HTML content, before URL localization.
+	 * @param string  $content the raw HTML content, before URL localization.
+	 * @param WP_Post $post the post being exported.
 	 * @return string the filtered fallback content.
 	 */
-	private function html_fallback( $content ) {
+	private function html_fallback( $content, $post ) {
 		$content = $this->localize_urls_in_text( $content );
-		$content = apply_filters( 'jekyll_export_html', $content );
-		return apply_filters( 'jekyll_export_content', $content );
+		$content = apply_filters( 'jekyll_export_html', $content, $post );
+		return apply_filters( 'jekyll_export_content', $content, $post );
 	}
 
 	/**
@@ -725,6 +726,12 @@ class Jekyll_Export {
 				$this->save( $destination );
 			}
 			$this->cleanup();
+
+			// Buffer before firing the action so anything a third-party hook
+			// echoes is discarded rather than appended to the response.
+			ob_start();
+			do_action( 'jekyll_export_complete' );
+			ob_end_clean();
 		} catch ( \Throwable $e ) {
 			// Clean up only output buffers that export() started, leaving any
 			// pre-existing WordPress/admin buffers intact.

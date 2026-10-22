@@ -418,6 +418,50 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the meta, terms, markdown and content filters pass the post
+	 * as their second argument to a callback registered with accepted_args 2.
+	 */
+	function test_filters_receive_post() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Filter Post',
+				'post_content' => 'Filter content',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+		$post = get_post( $post_id );
+
+		$filters   = array( 'jekyll_export_meta', 'jekyll_export_terms', 'jekyll_export_markdown', 'jekyll_export_content' );
+		$received  = array();
+		$callbacks = array();
+		foreach ( $filters as $filter ) {
+			$callbacks[ $filter ] = function ( $value, $filter_post ) use ( $filter, &$received ) {
+				$received[ $filter ] = $filter_post;
+				return $value;
+			};
+			add_filter( $filter, $callbacks[ $filter ], 10, 2 );
+		}
+
+		try {
+			$jekyll_export->convert_meta( $post );
+			$jekyll_export->convert_terms( $post );
+			$jekyll_export->convert_content( $post );
+
+			foreach ( $filters as $filter ) {
+				$this->assertArrayHasKey( $filter, $received, $filter . ' should have fired' );
+				$this->assertSame( $post_id, $received[ $filter ]->ID, $filter . ' should receive the post' );
+			}
+		} finally {
+			foreach ( $callbacks as $filter => $callback ) {
+				remove_filter( $filter, $callback, 10 );
+			}
+		}
+	}
+
+	/**
 	 * Test that it exports site options to the site config
 	 */
 	function test_export_options() {
@@ -1504,6 +1548,120 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that jekyll_export_complete fires once after a successful save.
+	 *
+	 * Passing a destination is the WP-CLI --output path. The action runs after
+	 * the archive is written and the temporary files are gone.
+	 */
+	function test_export_to_destination_fires_jekyll_export_complete() {
+		global $jekyll_export;
+
+		$destination = get_temp_dir() . 'jekyll-export-complete-' . wp_generate_password( 8, false ) . '.zip';
+		$calls       = 0;
+		$cleaned_up  = false;
+		$saved       = false;
+		$callback    = function () use ( &$calls, &$cleaned_up, &$saved, $jekyll_export, $destination ) {
+			++$calls;
+			$cleaned_up = ! file_exists( $jekyll_export->dir ) && ! file_exists( $jekyll_export->zip );
+			$saved      = file_exists( $destination );
+		};
+
+		add_action( 'jekyll_export_complete', $callback );
+		$before = did_action( 'jekyll_export_complete' );
+		$level  = ob_get_level();
+
+		ob_start();
+		try {
+			$jekyll_export->export( $destination );
+			$output = ob_get_clean();
+
+			$this->assertSame( 1, $calls, 'jekyll_export_complete should fire exactly once.' );
+			$this->assertSame( $before + 1, did_action( 'jekyll_export_complete' ) );
+			$this->assertTrue( $cleaned_up, 'The action should fire after temporary files are cleaned up.' );
+			$this->assertTrue( $saved, 'The action should fire after the archive is saved.' );
+			$this->assertSame( '', $output, 'Nothing should be streamed when a destination is given.' );
+		} finally {
+			while ( ob_get_level() > $level ) {
+				ob_end_clean();
+			}
+			remove_action( 'jekyll_export_complete', $callback );
+			$GLOBALS['wp_filesystem']->delete( $destination );
+		}
+	}
+
+	/**
+	 * Test that jekyll_export_complete fires once on the download path.
+	 *
+	 * export() with no destination calls send(), which is the browser download
+	 * and `wp jekyll-export` stdout path. Output is captured the same way
+	 * test_send_outputs_zip_content captures send().
+	 */
+	function test_export_download_fires_jekyll_export_complete() {
+		global $jekyll_export;
+
+		$calls      = 0;
+		$cleaned_up = false;
+		$callback   = function () use ( &$calls, &$cleaned_up, $jekyll_export ) {
+			++$calls;
+			$cleaned_up = ! file_exists( $jekyll_export->dir ) && ! file_exists( $jekyll_export->zip );
+		};
+
+		add_action( 'jekyll_export_complete', $callback );
+		$before = did_action( 'jekyll_export_complete' );
+		$level  = ob_get_level();
+
+		ob_start();
+		try {
+			$jekyll_export->export();
+			$output = ob_get_clean();
+
+			$this->assertSame( 1, $calls, 'jekyll_export_complete should fire exactly once.' );
+			$this->assertSame( $before + 1, did_action( 'jekyll_export_complete' ) );
+			$this->assertTrue( $cleaned_up, 'The action should fire after temporary files are cleaned up.' );
+			$this->assertSame( "PK\x03\x04", substr( $output, 0, 4 ), 'Output should be the zip archive send() streamed.' );
+		} finally {
+			while ( ob_get_level() > $level ) {
+				ob_end_clean();
+			}
+			remove_action( 'jekyll_export_complete', $callback );
+		}
+	}
+
+	/**
+	 * Test that output echoed by a jekyll_export_complete callback is discarded.
+	 *
+	 * On the download path the archive has already been sent, so a callback
+	 * that prints would otherwise be appended to the zip.
+	 */
+	function test_jekyll_export_complete_discards_callback_output() {
+		global $jekyll_export;
+
+		$marker   = 'jekyll-export-complete-marker';
+		$callback = function () use ( $marker ) {
+			echo $marker;
+		};
+
+		add_action( 'jekyll_export_complete', $callback );
+		$before = did_action( 'jekyll_export_complete' );
+		$level  = ob_get_level();
+
+		ob_start();
+		try {
+			$jekyll_export->export();
+			$output = ob_get_clean();
+
+			$this->assertSame( $before + 1, did_action( 'jekyll_export_complete' ), 'The action should still fire.' );
+			$this->assertStringNotContainsString( $marker, $output );
+			$this->assertSame( "PK\x03\x04", substr( $output, 0, 4 ), 'Output should still be the zip archive.' );
+		} finally {
+			while ( ob_get_level() > $level ) {
+				ob_end_clean();
+			}
+			remove_action( 'jekyll_export_complete', $callback );
+		}
+	}
+
+	/**
 	 * Test that convert_posts() exports every post when there are several batches
 	 */
 	function test_convert_posts_multiple_batches() {
@@ -1577,5 +1735,33 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		// Clean up.
 		unset( $_GET['type'] );
 		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Test that html-to-markdown 5.1.3 escapes a backtick inside inline code
+	 * and a quote inside a link title, so a future converter bump shows the
+	 * export change in CI.
+	 */
+	function test_pins_html_to_markdown_escaping() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => 'Escaping Test',
+				'post_content' => '<p>Run <code>`foo`</code> now, then read <a href="https://example.com" title="He said &quot;hi&quot;">the page</a>.</p>',
+				'post_status'  => 'publish',
+				'post_author'  => self::$author_id,
+			)
+		);
+
+		$post    = get_post( $post_id );
+		$content = $jekyll_export->convert_content( $post );
+
+		// The inline code keeps its inner backtick by wrapping in double backticks.
+		$this->assertStringContainsString( '`` `foo` ``', $content );
+
+		// The link title hides its quote in an entity so it stays inside the title.
+		$this->assertStringContainsString( '&quot;hi&quot;', $content );
+		$this->assertStringNotContainsString( '"hi"', $content );
 	}
 }

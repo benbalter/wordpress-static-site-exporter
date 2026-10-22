@@ -17,7 +17,6 @@ Use this skill when working on PHPStan in a WordPress codebase, for example:
 
 ## Inputs required
 
-- `wp-project-triage` output (run first if you haven't)
 - Whether adding/updating Composer dev dependencies is allowed (stubs).
 - Whether changing the baseline is allowed for this task.
 
@@ -25,7 +24,7 @@ Use this skill when working on PHPStan in a WordPress codebase, for example:
 
 ### 0) Discover PHPStan entrypoints (deterministic)
 1. Inspect PHPStan setup (config, baseline, scripts):
-   - `node skills/wp-phpstan/scripts/phpstan_inspect.mjs`
+   - `node .github/skills/wp-phpstan/scripts/phpstan_inspect.mjs`
 
 Prefer the repo’s existing `composer` script (e.g. `composer run phpstan`) when present.
 

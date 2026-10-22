@@ -12,14 +12,15 @@ This is a WordPress plugin that converts WordPress posts, pages, taxonomies, met
 
 ## Technology Stack
 
-- **Language**: PHP 7.2.5+ (tested up to PHP 8.4)
-- **WordPress**: Compatible with WordPress 6.7, 6.8, and latest
+- **Language**: PHP 8.2+ (tested up to PHP 8.4)
+- **WordPress**: 6.4+ (CI tests 6.4, 6.8, 6.9, and latest)
 - **Key Dependencies**:
   - `league/html-to-markdown` ^5.0 - HTML to Markdown conversion
-  - `symfony/yaml` ^5.4 - YAML parsing and generation
+  - `symfony/yaml` ^7.0 - YAML parsing and generation
 - **Dev Dependencies**:
-  - PHPUnit ~8.0 - Unit testing
+  - PHPUnit ~9.6 - Unit testing
   - WordPress Coding Standards (WPCS) ^3.0 - Code style enforcement
+  - PHPStan ^2.0 with `szepeviktor/phpstan-wordpress` - Static analysis
   - WP-CLI ~2.4 - Command-line interface
 
 ## Project Structure
@@ -27,18 +28,24 @@ This is a WordPress plugin that converts WordPress posts, pages, taxonomies, met
 ```
 /
 ├── jekyll-exporter.php       # Main plugin file
-├── jekyll-export-cli.php     # WP-CLI command definition
+├── jekyll-export-cli.php     # Deprecated standalone CLI script (use `wp jekyll-export`)
 ├── lib/                      # Library files
-│   └── cli.php              # CLI-related functionality
+│   ├── cli.php              # WP-CLI command (`wp jekyll-export`)
+│   └── colspan-table-converter.php
 ├── tests/                    # PHPUnit tests
 │   ├── bootstrap.php        # Test bootstrap
-│   └── test-wordpress-to-jekyll-exporter.php
+│   └── *Test.php            # e.g. WordPressToJekyllExporterTest.php
 ├── script/                   # Build and CI scripts
-│   ├── cibuild              # Main CI build script
+│   ├── cibuild              # Main CI build script (phpunit + phpcs + phpstan)
 │   ├── cibuild-phpunit      # Run PHPUnit tests
 │   ├── cibuild-phpcs        # Run PHP CodeSniffer
+│   ├── cibuild-phpstan      # Run PHPStan
+│   ├── build-readme         # Generate readme.txt from docs/
+│   ├── vendor               # Regenerate shipped vendor/ with --no-dev
+│   ├── bootstrap            # Install dev dependencies
 │   ├── fmt                  # Auto-format code
-│   └── setup                # Set up test environment
+│   ├── setup                # Set up test environment
+│   └── install-wp-tests     # Download WordPress and the test suite (called by setup)
 ├── docs/                     # Documentation
 └── vendor/                   # Composer dependencies
 ```
@@ -49,14 +56,14 @@ This is a WordPress plugin that converts WordPress posts, pages, taxonomies, met
 
 1. **Install Dependencies**:
    ```bash
-   composer install --dev
+   script/bootstrap
    ```
 
 2. **Set Up WordPress Test Environment** (for running tests):
    ```bash
    script/setup
    ```
-   This requires MySQL to be running and accessible.
+   This requires MySQL to be running and accessible at `127.0.0.1` with user `root` / password `root`. Set `WP_VERSION` to test a specific WordPress release (default: latest).
 
 ### Building and Testing
 
@@ -75,6 +82,11 @@ script/cibuild-phpunit
 script/cibuild-phpcs
 ```
 
+**Run Static Analysis**:
+```bash
+script/cibuild-phpstan
+```
+
 **Auto-Format Code**:
 ```bash
 script/fmt
@@ -84,7 +96,7 @@ script/fmt
 
 - All code changes must include appropriate PHPUnit tests
 - Tests are located in `tests/` directory
-- Test files must be prefixed with `test-` and have `.php` extension
+- Test files are named `*Test.php` (the suffix `phpunit.xml` collects)
 - Tests require a WordPress test installation (set up via `script/setup`)
 - The project supports both single-site and multisite WordPress installations
 
@@ -94,13 +106,13 @@ script/fmt
 - Configuration is in `phpcs.ruleset.xml`
 - Run `script/cibuild-phpcs` to check compliance
 - Run `script/fmt` to automatically fix style issues
-- All PHP files must be compatible with PHP 7.2.5+
+- All PHP files must be compatible with PHP 8.2+
 
 ### Important Coding Conventions
 
 1. **WordPress Compatibility**:
    - Use WordPress functions and filters appropriately
-   - Ensure compatibility with WordPress 6.7+ and latest versions
+   - Ensure compatibility with WordPress 6.4+ and latest versions
    - Support both single-site and multisite installations
 
 2. **Internationalization**:
@@ -123,8 +135,8 @@ script/fmt
 ## Key Files to Understand
 
 - **jekyll-exporter.php**: Main plugin class (`Jekyll_Export`) with core export logic
-- **jekyll-export-cli.php**: WP-CLI command registration
-- **lib/cli.php**: CLI-specific functionality and hooks
+- **lib/cli.php**: WP-CLI command (`Jekyll_Export_Command`, registered as `wp jekyll-export`)
+- **jekyll-export-cli.php**: Deprecated standalone CLI script
 - **phpcs.ruleset.xml**: PHP CodeSniffer configuration
 - **phpunit.xml**: PHPUnit configuration
 - **composer.json**: Dependency management
@@ -153,7 +165,7 @@ script/fmt
 1. Update version in `composer.json`
 2. Run `composer update`
 3. Test thoroughly, especially with different PHP and WordPress versions
-4. Update minimum PHP version in plugin header if needed
+4. If the minimum PHP version changes, update it everywhere it's declared: `require.php` and `config.platform.php` in `composer.json`, the `Requires PHP` header and `version_compare()` check in `jekyll-exporter.php`, and `docs/` (then run `script/build-readme`)
 
 ### Vendor Management
 
@@ -161,24 +173,27 @@ This plugin ships production Composer dependencies (in `vendor/`) as part of the
 
 **Critical**: The committed `vendor/composer/autoload_*.php` files must be generated with `--no-dev` so they only reference shipped packages. If they are generated with dev dependencies, the plugin will fatal error on load for end users.
 
-- **Always run `script/vendor`** after changing `composer.json` or updating dependencies. This script runs `composer install --no-dev` to regenerate the autoload files correctly.
+- **Always run `script/vendor`** after changing `composer.json` or updating dependencies. This script runs `composer install --no-dev` to regenerate the autoload files correctly. Run `script/bootstrap` afterwards to restore the dev dependencies.
 - **Never run `composer install` or `composer update` without `--no-dev`** when preparing vendor files for commit.
-- CI will verify that committed vendor autoload files match the output of `script/vendor`.
+- CI fails if the committed `vendor/composer/autoload_*.php` files reference any dev package.
 
 ## CI/CD Pipeline
 
 The project uses GitHub Actions with the following jobs:
 
-1. **phpunit**: Runs PHPUnit tests on PHP 8.4 across multiple WordPress versions (latest, 6.7, 6.8)
-2. **phpcs**: Runs PHP CodeSniffer for code style compliance on PHP 8.4
+1. **phpunit**: PHPUnit on PHP 8.4 against WordPress latest, 6.8, and 6.9, plus PHP 8.3 multisite on latest and the minimum pair (PHP 8.2 / WordPress 6.4). Tests run against a `mysql:9.6` service container.
+2. **phpcs**: PHP CodeSniffer on PHP 8.3
+3. **phpstan**: PHPStan static analysis on PHP 8.4 (configured in `phpstan.neon`)
+4. **vendor-autoload**: fails if the committed autoload files reference dev dependencies
+5. **readme**: regenerates `readme.txt` with `script/build-readme` and fails if it differs from the committed copy
 
-Tests run against MySQL 5.7 and both single-site and multisite WordPress installations.
+A separate `integration.yml` workflow runs a full export against a Docker Compose WordPress install (`wordpress:latest` with MariaDB).
 
 ## Important Notes
 
-- **Minimum PHP Version**: 7.2.5 (configured in `composer.json`)
-- **Tested PHP Version**: 8.4
-- **WordPress Compatibility**: 6.7, 6.8, and latest
+- **Minimum PHP Version**: 8.2 (`composer.json` and the `Requires PHP` plugin header)
+- **Tested PHP Versions**: 8.2, 8.3, and 8.4
+- **WordPress Compatibility**: 6.4+ (`Requires at least` plugin header); `Tested up to` lives in `docs/header.md`
 - **License**: GPLv3 or later
 - **Main Author**: Ben Balter
 
@@ -186,7 +201,7 @@ Tests run against MySQL 5.7 and both single-site and multisite WordPress install
 
 ```bash
 # Install dependencies
-composer install --dev
+script/bootstrap
 
 # Run all CI checks
 script/cibuild
@@ -196,6 +211,9 @@ script/cibuild-phpunit
 
 # Check code style
 script/cibuild-phpcs
+
+# Run static analysis
+script/cibuild-phpstan
 
 # Auto-fix code style issues
 script/fmt
