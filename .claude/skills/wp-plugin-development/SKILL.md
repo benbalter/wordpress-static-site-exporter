@@ -28,7 +28,7 @@ Use this skill for plugin work such as:
 ### 0) Triage and locate plugin entrypoints
 
 1. Detect plugin headers (deterministic scan):
-   - `node .github/skills/wp-plugin-development/scripts/detect_plugins.mjs`
+   - `node .claude/skills/wp-plugin-development/scripts/detect_plugins.mjs`
 
 If this is a full site repo, pick the specific plugin under `wp-content/plugins/` or `mu-plugins/` before changing code.
 
