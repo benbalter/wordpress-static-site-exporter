@@ -867,6 +867,102 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that a non-ASCII slug is written as readable text, not as the hex
+	 * digits left after sanitize_file_name() strips the percent signs.
+	 */
+	function test_write_non_ascii_slug() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => '日本',
+				'post_name'    => '日本',
+				'post_content' => 'content',
+				'post_status'  => 'publish',
+				'post_date'    => '2026-01-02 03:04:05',
+				'post_author'  => self::$author_id,
+			)
+		);
+		$post    = get_post( $post_id );
+		$this->assertStringContainsString( '%', $post->post_name, 'WordPress should store the slug percent-encoded' );
+
+		$jekyll_export->write( 'non-ascii', $post );
+
+		$this->assertFileExists( $jekyll_export->dir . '/_posts/2026-01-02-日本.md' );
+	}
+
+	/**
+	 * Test that two drafts mapping to the same filename are both kept.
+	 */
+	function test_write_draft_collision_keeps_both() {
+		global $jekyll_export;
+
+		$ids = array();
+		foreach ( array( 'first', 'second' ) as $content ) {
+			$ids[ $content ] = wp_insert_post(
+				array(
+					'post_title'   => 'Same Draft Title',
+					'post_content' => $content,
+					'post_status'  => 'draft',
+					'post_author'  => self::$author_id,
+				)
+			);
+			$jekyll_export->write( $content, get_post( $ids[ $content ] ) );
+		}
+
+		$this->assertSame( 'first', file_get_contents( $jekyll_export->dir . '/_drafts/Same-Draft-Title.md' ) );
+		$this->assertSame( 'second', file_get_contents( $jekyll_export->dir . '/_drafts/Same-Draft-Title-' . $ids['second'] . '.md' ) );
+
+		// Writing the same post again overwrites its own file.
+		$jekyll_export->write( 'first again', get_post( $ids['first'] ) );
+		$this->assertSame( 'first again', file_get_contents( $jekyll_export->dir . '/_drafts/Same-Draft-Title.md' ) );
+	}
+
+	/**
+	 * Test that a draft with no title and no slug gets a usable filename.
+	 */
+	function test_write_untitled_draft() {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_title'   => '',
+				'post_content' => 'untitled',
+				'post_status'  => 'draft',
+				'post_author'  => self::$author_id,
+			)
+		);
+		$jekyll_export->write( 'untitled', get_post( $post_id ) );
+
+		$this->assertFileExists( $jekyll_export->dir . '/_drafts/draft-' . $post_id . '.md' );
+	}
+
+	/**
+	 * Test that exported custom post types are declared as Jekyll collections,
+	 * since Jekyll ignores `_<type>s/` folders that aren't.
+	 */
+	function test_convert_options_declares_collections() {
+		global $jekyll_export;
+
+		$jekyll_export->convert_options();
+		$config = Yaml::parse( file_get_contents( $jekyll_export->dir . '/_config.yml' ) );
+		$this->assertArrayNotHasKey( 'collections', (array) $config, 'No collections without custom post types' );
+
+		$post_types = function () {
+			return array( 'post', 'page', 'portfolio' );
+		};
+		add_filter( 'jekyll_export_post_types', $post_types );
+		try {
+			$jekyll_export->convert_options();
+		} finally {
+			remove_filter( 'jekyll_export_post_types', $post_types );
+		}
+
+		$config = Yaml::parse( file_get_contents( $jekyll_export->dir . '/_config.yml' ) );
+		$this->assertSame( array( 'portfolios' => array( 'output' => true ) ), $config['collections'] );
+	}
+
+	/**
 	 * Test that write handles future posts
 	 */
 	function test_write_future() {
@@ -1695,20 +1791,25 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		// Set up the screen and GET params to simulate an export request.
 		$_GET['type'] = 'jekyll';
 		$_GET['_wpnonce'] = wp_create_nonce( 'jekyll_export' );
-		set_current_screen( 'export' );
 
 		// Track whether export() is called by checking if temp dir changes.
 		$dir_before = $jekyll_export->dir;
 
-		// callback() should return early without calling export().
-		$jekyll_export->callback();
+		// callback() should stop with an explanation, without calling export().
+		// It's hooked to current_screen, so setting the screen runs it.
+		try {
+			set_current_screen( 'export' );
+			$jekyll_export->callback();
+			$this->fail( 'callback() should wp_die() for non-admin users' );
+		} catch ( WPDieException $e ) {
+			$this->assertStringContainsString( 'Manage Options', $e->getMessage() );
+		} finally {
+			unset( $_GET['type'], $_GET['_wpnonce'] );
+			wp_set_current_user( 0 );
+		}
 
 		// The dir should remain unchanged (export() was not called).
 		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run for non-admin users' );
-
-		// Clean up.
-		unset( $_GET['type'], $_GET['_wpnonce'] );
-		wp_set_current_user( 0 );
 	}
 
 	/**
@@ -1723,18 +1824,23 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 		// Set up screen and GET params but without nonce.
 		$_GET['type'] = 'jekyll';
-		set_current_screen( 'export' );
 
 		$dir_before = $jekyll_export->dir;
 
-		// callback() should return early without calling export().
-		$jekyll_export->callback();
+		// callback() should say the link expired, without calling export().
+		// It's hooked to current_screen, so setting the screen runs it.
+		try {
+			set_current_screen( 'export' );
+			$jekyll_export->callback();
+			$this->fail( 'callback() should wp_die() without a valid nonce' );
+		} catch ( WPDieException $e ) {
+			$this->assertStringContainsString( 'expired', $e->getMessage() );
+		} finally {
+			unset( $_GET['type'] );
+			wp_set_current_user( 0 );
+		}
 
 		$this->assertEquals( $dir_before, $jekyll_export->dir, 'Export should not run without a valid nonce' );
-
-		// Clean up.
-		unset( $_GET['type'] );
-		wp_set_current_user( 0 );
 	}
 
 	/**

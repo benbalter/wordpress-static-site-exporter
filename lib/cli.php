@@ -30,6 +30,15 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 * [--post_type=<post_type>]
 		 * : Export only specific post types (comma-separated).
 		 *
+		 * [--post_status=<post_status>]
+		 * : Export only posts with these statuses (comma-separated), e.g. `publish`
+		 * to leave out drafts. Defaults to publish, future, draft, pending,
+		 * private, and inherit.
+		 *
+		 * [--skip-uploads]
+		 * : Don't copy wp-content/uploads into the export. Useful when media is
+		 * served from a CDN, or the uploads folder is too big to zip.
+		 *
 		 * [--output=<file>]
 		 * : Write the zip to this file instead of STDOUT.
 		 *
@@ -49,6 +58,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 *
 		 *     # Export only pages
 		 *     $ wp jekyll-export --post_type=page > export.zip
+		 *
+		 *     # Export only published content, without media
+		 *     $ wp jekyll-export --post_status=publish --skip-uploads > export.zip
 		 *
 		 *     # Write the zip to a file
 		 *     $ wp jekyll-export --output=export.zip
@@ -99,6 +111,21 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				}
 			}
 
+			// Set up post status filter if specified.
+			if ( ! empty( $assoc_args['post_status'] ) ) {
+				$post_statuses = wp_parse_list( $assoc_args['post_status'] );
+				if ( ! empty( $post_statuses ) ) {
+					add_filter(
+						'jekyll_export_post_statuses',
+						function () use ( $post_statuses ) {
+							return $post_statuses;
+						}
+					);
+				}
+			}
+			if ( ! empty( $assoc_args['skip-uploads'] ) ) {
+				add_filter( 'jekyll_export_skip_uploads', '__return_true' );
+			}
 			if ( empty( $assoc_args['output'] ) ) {
 				$jekyll_export->export();
 				return;

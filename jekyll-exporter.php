@@ -93,6 +93,14 @@ class Jekyll_Export {
 	public $dir;
 
 	/**
+	 * Filenames written so far, keyed by export directory, mapping each
+	 * filename to the ID of the post written there. See write().
+	 *
+	 * @var array<string, array<string, int>>
+	 */
+	private $written_files = array();
+
+	/**
 	 * Path to the temporary zip file
 	 *
 	 * @var string
@@ -120,12 +128,30 @@ class Jekyll_Export {
 			return;
 		}
 
+		// Both checks used to return silently, which dropped the user on the
+		// plain Export screen with no hint why. The menu link carries a nonce
+		// minted when the admin page loaded, so a tab left open past the nonce
+		// lifetime (12 to 24 hours) is the common way to hit this.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
+			wp_die(
+				esc_html__( 'You need the Manage Options capability (usually an Administrator) to export this site.', 'jekyll-exporter' ),
+				esc_html__( 'Export not allowed', 'jekyll-exporter' ),
+				array(
+					'response'  => 403,
+					'back_link' => true,
+				)
+			);
 		}
 
 		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'jekyll_export' ) ) {
-			return;
+			wp_die(
+				esc_html__( 'This export link has expired. Reload the page, then choose Export to Jekyll from the Tools menu again.', 'jekyll-exporter' ),
+				esc_html__( 'Export link expired', 'jekyll-exporter' ),
+				array(
+					'response'  => 403,
+					'back_link' => true,
+				)
+			);
 		}
 
 		$this->export();
@@ -842,6 +868,19 @@ class Jekyll_Export {
 			}
 		}
 
+		// Posts of other types are written to `_<type>s/` (see write()), which
+		// Jekyll ignores unless it's declared as a collection, so declare them.
+		$collections = array();
+		foreach ( (array) apply_filters( 'jekyll_export_post_types', array( 'post', 'page' ) ) as $post_type ) {
+			if ( in_array( $post_type, array( 'post', 'page' ), true ) ) {
+				continue;
+			}
+			$collections[ $post_type . 's' ] = array( 'output' => true );
+		}
+		if ( ! empty( $collections ) ) {
+			$options['collections'] = $collections;
+		}
+
 		$output = Yaml::dump( $options );
 
 		$wp_filesystem->put_contents( $this->dir . '_config.yml', $output );
@@ -859,20 +898,60 @@ class Jekyll_Export {
 		global $wp_filesystem;
 
 		if ( ! in_array( get_post_status( $post ), array( 'publish', 'future' ), true ) ) {
-			$filename = '_drafts/' . sanitize_file_name( get_page_uri( $post->ID ) . '-' . ( get_the_title( $post->ID ) ) . '.md' );
+			// Drafts often have no slug and sometimes no title; join whichever exist.
+			$name     = implode(
+				'-',
+				array_filter(
+					array( $this->filename_slug( get_page_uri( $post->ID ) ), get_the_title( $post->ID ) ),
+					function ( $part ) {
+						return '' !== $part;
+					}
+				)
+			);
+			$filename = '_drafts/' . sanitize_file_name( ( '' === $name ? 'draft-' . $post->ID : $name ) . '.md' );
 		} elseif ( get_post_type( $post ) === 'page' ) {
 			// Sanitize each path segment independently so the directory hierarchy is
 			// preserved while individual segments cannot contain traversal sequences.
-			$segments = array_map( 'sanitize_file_name', explode( '/', get_page_uri( $post->ID ) ) );
+			$segments = array_map(
+				function ( $segment ) {
+					return sanitize_file_name( $this->filename_slug( $segment ) );
+				},
+				explode( '/', get_page_uri( $post->ID ) )
+			);
 			$filename = implode( '/', $segments ) . '.md';
 		} else {
-			$filename = '_' . get_post_type( $post ) . 's/' . mysql2date( 'Y-m-d', $post->post_date, false ) . '-' . sanitize_file_name( $post->post_name ) . '.md';
+			$slug     = sanitize_file_name( $this->filename_slug( $post->post_name ) );
+			$filename = '_' . get_post_type( $post ) . 's/' . mysql2date( 'Y-m-d', $post->post_date, false ) . '-' . ( '' === $slug ? (string) $post->ID : $slug ) . '.md';
 		}
+
+		// Two posts can map to the same file (the same slug on the same day, or
+		// drafts with the same title). put_contents() would silently keep only
+		// the last one, so give later ones the post ID instead. Tracked per
+		// export directory, so rewriting the same post still overwrites it.
+		$claimed = isset( $this->written_files[ $this->dir ][ $filename ] ) ? $this->written_files[ $this->dir ][ $filename ] : null;
+		if ( null !== $claimed && $claimed !== $post->ID ) {
+			$filename = substr( $filename, 0, -3 ) . '-' . $post->ID . '.md';
+		}
+		$this->written_files[ $this->dir ][ $filename ] = $post->ID;
 
 		// A nested page can be written before its parent, so create every missing
 		// directory in the path, not just the last one.
 		wp_mkdir_p( $this->dir . dirname( $filename ) );
 		$wp_filesystem->put_contents( $this->dir . $filename, $output );
+	}
+
+	/**
+	 * Turn a post slug into the readable form used in a filename.
+	 *
+	 * WordPress stores non-ASCII slugs percent-encoded (日本 is %e6%97%a5%e6%9c%ac).
+	 * sanitize_file_name() strips the % signs, which left filenames of hex
+	 * digits, so decode first.
+	 *
+	 * @param string $slug A post slug or page URI segment.
+	 * @return string The decoded slug.
+	 */
+	public function filename_slug( $slug ) {
+		return rawurldecode( (string) $slug );
 	}
 
 	/**
