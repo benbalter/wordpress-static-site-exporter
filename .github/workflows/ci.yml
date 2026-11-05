@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded pull request runs so only the latest commit is tested.
+# Pushes to main are never cancelled, so every merged commit keeps its result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   phpunit:
 
@@ -206,3 +212,39 @@ jobs:
             echo "::error file=readme.txt::readme.txt is out of date. Run script/build-readme and commit the result."
             exit 1
           fi
+
+  # Runtime dependencies ship inside the plugin (vendor/), so an advisory
+  # against one reaches every site. Dev dependencies never ship and are
+  # excluded. Reads composer.lock only; no install needed.
+  audit:
+    name: Audit runtime dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: composer audit
+        run: composer audit --no-dev
+
+  # WordPress.org Plugin Check against the same file set that ships: .distignore
+  # is applied first, so dev-only files (tests, scripts, configs) never produce
+  # findings. vendor/ is third-party code the plugin doesn't control, so it is
+  # excluded from the check.
+  plugin-check:
+    name: Plugin Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assemble distribution copy
+        run: |
+          mkdir -p plugin-dist
+          rsync -a --exclude='/plugin-dist' --exclude-from=.distignore ./ plugin-dist/
+
+      - name: Run Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ./plugin-dist
+          # The copy lives in ./plugin-dist, so name the slug explicitly or the
+          # directory name is used and the text-domain check flags every string.
+          slug: jekyll-exporter
+          exclude-directories: 'vendor'

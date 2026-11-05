@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# PreToolUse guard for Edit/Write/MultiEdit: denies hand edits to files that are
+# generated, so the change isn't silently overwritten by the next build.
+#
+# - readme.txt is built from docs/ by script/build-readme.
+# - vendor/ is rebuilt from composer.lock by script/vendor.
+#
+# Input: the hook JSON on stdin. Output: a "deny" decision whose reason is fed
+# back to Claude, or nothing.
+
+command -v jq >/dev/null || exit 0
+file=$(jq -r '.tool_input.file_path // ""')
+[ -n "$file" ] || exit 0
+root=$(git -C "$(dirname "$file")" rev-parse --show-toplevel 2>/dev/null) || exit 0
+rel=${file#"$root"/}
+
+case "$rel" in
+  readme.txt)
+    reason="readme.txt is generated from docs/ by script/build-readme, and CI fails if it drifts. Edit the matching file in docs/ (Stable tag lives in docs/header.md), then run script/build-readme." ;;
+  vendor/*)
+    reason="$rel is generated: vendor/ is rebuilt from composer.lock with runtime dependencies only by script/vendor, and CI fails if it drifts. Change composer.json, run composer update, then script/vendor." ;;
+  *) exit 0 ;;
+esac
+
+jq -n --arg reason "$reason" '{
+  hookSpecificOutput: {
+    hookEventName: "PreToolUse",
+    permissionDecision: "deny",
+    permissionDecisionReason: $reason
+  }
+}'
