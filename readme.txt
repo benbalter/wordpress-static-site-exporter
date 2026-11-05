@@ -14,20 +14,22 @@ Export WordPress posts, pages, and media to Markdown with YAML front matter for 
 
 == Description ==
 
-Export your WordPress posts and pages to Markdown in one click, ready for Jekyll, Hugo, or any other static site generator.
+Export your WordPress posts and pages to Markdown in a couple of clicks, ready for Jekyll, Hugo, or any other static site generator.
 
 == Features ==
 
-* **One click.** Choose *Export to Static Site* from the Tools menu and download a zip. No settings to configure.
+* **One screen, no settings.** Choose *Export to Static Site* from the Tools menu, click Export, and download a zip. Nothing to configure first.
 * **Your content, as Markdown.** Posts, pages, and drafts become Markdown files. Each one starts with its title, date, author, categories, tags, and custom fields.
 * **Images come along.** Your uploaded images and files are included, and links to them keep working.
-* **Old links keep working.** On Jekyll, each post keeps its original web address.
+* **Jekyll, Hugo, Astro, or Eleventy.** Jekyll is the default; pick another generator and the export uses its folders and config.
+* **Old links keep working.** On Jekyll, Hugo, and Eleventy, each post keeps its original web address.
 
 == Usage ==
 
 1. In your WordPress dashboard, go to **Plugins → Add New**, search for **Static Site Exporter**, then install and activate it.
 2. Choose **Export to Static Site** from the **Tools** menu.
-3. Unzip the download into your Jekyll site. For Hugo and other generators, move the Markdown files into your site's content folder.
+3. Pick your static site generator (Jekyll is the default), then click **Export**.
+4. Unzip the download into your site. [Output formats](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/output-formats.md) says where each generator's files go.
 
 That's it. Need more control? You can [export from the command line, pick which posts to export, include custom post types, and customize the output](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/advanced-usage.md).
 
@@ -44,7 +46,11 @@ That's it. Need more control? You can [export from the command line, pick which 
 
 = Does it work with Hugo, Eleventy, or other static site generators? =
 
-Yes. Every post becomes a Markdown file with YAML front matter, which most static site generators read. The folders follow Jekyll's layout (`_posts/`, `_drafts/`, `_config.yml`), so for another generator, move the posts into its content folder.
+Yes. Pick Hugo, Astro, or Eleventy from the format dropdown under **Tools → Export to Static Site**, or pass `--format` on the command line, and the export is laid out for that generator, with its folders, draft markers, and config file:
+
+    wp jekyll-export --format=hugo --output=export.zip
+
+Jekyll is the default. Every format is Markdown with YAML front matter, which most other generators read too. See [Output formats](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/output-formats.md) for what each one includes.
 
 = My export times out, or the zip file is empty. What can I do? =
 
@@ -68,11 +74,11 @@ The export copies `wp-content/uploads` into the zip and rewrites links to your m
 
 = Will my old URLs keep working? =
 
-Each post's front matter includes a `permalink` set to its WordPress URL, so Jekyll publishes it at the same address.
+Each post's front matter includes its WordPress URL (`permalink`, or `url` for Hugo), so Jekyll, Hugo, and Eleventy publish it at the same address. For Astro, [Output formats](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/output-formats.md) has a route that does the same.
 
 = Are drafts exported? =
 
-Yes, into `_drafts/`. To leave them out, use `wp jekyll-export --post_status=publish`.
+Yes, into `_drafts/` for Jekyll. Hugo, Astro, and Eleventy keep drafts next to your posts, marked `draft: true`. To leave them out, use `wp jekyll-export --post_status=publish`.
 
 = Does it export custom post types and custom fields? =
 
@@ -80,7 +86,7 @@ Custom fields are exported as front matter. Custom post types need one filter to
 
 == Screenshots ==
 
-1. Choose Export to Static Site from the Tools menu to download your site as a zip file.
+1. Choose Export to Static Site from the Tools menu, pick a format, and click Export to download your site as a zip file.
 2. The zip has your posts, drafts, pages, and settings, laid out for Jekyll.
 3. Each post is Markdown with YAML front matter: title, date, author, categories, tags, and its original URL.
 

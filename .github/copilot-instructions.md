@@ -7,7 +7,7 @@ This is a WordPress plugin that converts WordPress posts, pages, taxonomies, met
 **Key Features:**
 - Converts WordPress content to Markdown using League HTML-to-Markdown
 - Exports post metadata as YAML front matter
-- Generates Jekyll-compatible file structure
+- Lays the files out for Jekyll (the default), Hugo, Astro, or Eleventy
 - Provides both WordPress admin UI and CLI (WP-CLI) interfaces
 
 ## Technology Stack
@@ -30,6 +30,7 @@ This is a WordPress plugin that converts WordPress posts, pages, taxonomies, met
 ├── jekyll-exporter.php       # Main plugin file
 ├── jekyll-export-cli.php     # Deprecated standalone CLI script (use `wp jekyll-export`)
 ├── lib/                      # Library files
+│   ├── class-export-format.php # Output format profiles (Jekyll, Hugo, Astro, Eleventy)
 │   ├── cli.php              # WP-CLI command (`wp jekyll-export`)
 │   └── colspan-table-converter.php
 ├── tests/                    # PHPUnit tests
@@ -135,6 +136,7 @@ script/fmt
 ## Key Files to Understand
 
 - **jekyll-exporter.php**: Main plugin class (`Jekyll_Export`) with core export logic
+- **lib/class-export-format.php**: `Jekyll_Export_Format`, one profile per static site generator (folders, drafts, front matter keys, uploads, config file). Format-specific behavior belongs here, not in `Jekyll_Export`
 - **lib/cli.php**: WP-CLI command (`Jekyll_Export_Command`, registered as `wp jekyll-export`)
 - **jekyll-export-cli.php**: Deprecated standalone CLI script
 - **phpcs.ruleset.xml**: PHP CodeSniffer configuration
