@@ -232,6 +232,10 @@ jobs:
   plugin-check:
     name: Plugin Check
     runs-on: ubuntu-latest
+    # The action posts its results as a PR comment.
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
 
@@ -248,3 +252,7 @@ jobs:
           # directory name is used and the text-domain check flags every string.
           slug: jekyll-exporter
           exclude-directories: 'vendor'
+          # Deprecated standalone script that bootstraps WordPress itself (so an
+          # ABSPATH guard would make it unusable) and already refuses anything
+          # but CLI access. `wp jekyll-export` replaces it.
+          exclude-files: 'jekyll-export-cli.php'
