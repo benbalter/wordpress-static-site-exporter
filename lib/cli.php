@@ -132,7 +132,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			}
 
 			$jekyll_export->export( $assoc_args['output'] );
-			WP_CLI::success( sprintf( 'Exported to %s', $assoc_args['output'] ) );
+			/* translators: %s: path of the zip file the export was written to */
+			WP_CLI::success( sprintf( __( 'Exported to %s', 'jekyll-exporter' ), $assoc_args['output'] ) );
 		}
 	}
 
