@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Renders the WordPress.org banner and icon from the SVG sources in
+# script/wporg-assets/ into .wordpress-org/, which the deploy workflow
+# (10up/action-wordpress-plugin-deploy) publishes as the plugin's assets.
+# Run this after editing an SVG, and commit the PNGs.
+#
+# It renders inside Docker so the fonts (Inter, JetBrains Mono) are the same
+# on every machine; without them the text falls back to whatever is
+# installed and the layout shifts.
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+docker run --rm -v "$PWD":/work -w /work debian:trixie-slim sh -ec '
+  apt-get update -qq
+  apt-get install -qq -y --no-install-recommends librsvg2-bin fonts-inter fonts-jetbrains-mono pngquant >/dev/null
+
+  src=script/wporg-assets
+  out=.wordpress-org
+
+  rsvg-convert -w 1544 -h 500 "$src/banner.svg" -o "$out/banner-1544x500.png"
+  rsvg-convert -w 772 -h 250 "$src/banner.svg" -o "$out/banner-772x250.png"
+  rsvg-convert -w 256 -h 256 "$src/icon.svg" -o "$out/icon-256x256.png"
+  rsvg-convert -w 128 -h 128 "$src/icon.svg" -o "$out/icon-128x128.png"
+  # The icon has no text, so WordPress.org can use the SVG directly.
+  cp "$src/icon.svg" "$out/icon.svg"
+
+  for png in "$out"/banner-*.png "$out"/icon-*.png; do
+    pngquant --force --skip-if-larger --quality 80-100 --output "$png" "$png" || true
+  done
+'
+
+ls -l .wordpress-org

@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Runs this checkout in WordPress Playground (PHP and WordPress in WebAssembly;
+# no Docker or database needed), seeded with the same sample blog as the
+# WordPress.org Live Preview (.wordpress-org/blueprints/blueprint.json).
+#
+# Usage: script/playground [--skip-browser] [--port=9400] [--reset] ...
+# Any extra flags are passed to `wp-playground start`; see `--help`.
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+exec npx --yes @wp-playground/cli@latest start \
+  --path=. \
+  --blueprint=.wordpress-org/blueprints/blueprint.json \
+  "$@"

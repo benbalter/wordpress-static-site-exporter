@@ -1,0 +1,45 @@
+name: Deploy assets to WordPress.org
+
+# The plugin directory's assets/ folder (banner, icon, screenshots, and the
+# Live Preview blueprint) isn't tied to a plugin version, so changes to
+# .wordpress-org/ are published when they land on main, without cutting a
+# release. The action also syncs readme.txt, but only to trunk and the stable
+# tag it names, and only when nothing else changed since the last release.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".wordpress-org/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    name: Update directory assets
+    runs-on: ubuntu-latest
+    # Holds the SVN credentials; see deploy.yml.
+    environment: wporg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install SVN
+        run: sudo apt-get install -y subversion
+
+      - name: WordPress.org plugin asset update
+        uses: 10up/action-wordpress-plugin-asset-update@stable
+        env:
+          SLUG: jekyll-exporter
+          # vendor/ and other build files differ from SVN by design; only sync
+          # readme.txt and .wordpress-org/.
+          IGNORE_OTHER_FILES: true
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}

@@ -586,6 +586,12 @@ Yes, into `_drafts/`. To leave them out, use `wp jekyll-export --post_status=pub
 
 Custom fields are exported as front matter. Custom post types need one filter to include them, and the export then declares each one as a Jekyll collection. See [Custom post types](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/custom-post-types.md) and [Custom fields](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/custom-fields.md).
 
+== Screenshots ==
+
+1. Choose Export to Jekyll from the Tools menu to download your site as a zip file.
+2. The zip has your posts, drafts, pages, and settings, laid out for Jekyll.
+3. Each post is Markdown with YAML front matter: title, date, author, categories, tags, and its original URL.
+
 == Changelog ==
 
 = 4.5.0 =

@@ -1,5 +1,9 @@
 ## Developing locally
 
+### Quickest: WordPress Playground
+
+`script/playground` runs your checkout in [WordPress Playground](https://wordpress.org/playground/) (WordPress and PHP in WebAssembly, so there's no Docker or database to set up), logged in, with a sample blog to export. It's the same sample content as the Live Preview on WordPress.org, from `.wordpress-org/blueprints/blueprint.json`. You need Node.js 20 or later.
+
 ### Option 1: Using Dev Containers (Recommended)
 
 The easiest way to get started is using [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) or [GitHub Codespaces](https://github.com/features/codespaces):
