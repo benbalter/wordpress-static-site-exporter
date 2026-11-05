@@ -168,13 +168,17 @@ jobs:
       # That is how 4.4.0 shipped without classes the converter needed.
       # Rebuild runtime dependencies from composer.lock and require that git
       # sees no difference: no missing, extra, or changed files.
+      # installed.json and installed.php only record how Composer ran, and
+      # they differ between Composer versions, so they're left out.
       - name: Verify committed vendor/ matches composer.lock
         run: |
           rm -rf vendor
           composer install --no-dev --no-interaction --no-progress
-          if [ -n "$(git status --porcelain -- vendor)" ]; then
+          paths="vendor :(exclude)vendor/composer/installed.json :(exclude)vendor/composer/installed.php"
+          if [ -n "$(git status --porcelain -- $paths)" ]; then
             echo "::error::Committed vendor/ differs from a fresh 'composer install --no-dev'. Run 'script/vendor' and commit the result."
-            git status --porcelain -- vendor
+            git status --porcelain -- $paths
+            git diff --stat -- $paths
             exit 1
           fi
           echo "Committed vendor/ matches composer.lock."
