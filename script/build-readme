@@ -5,7 +5,7 @@
 # Run this after editing anything in docs/ and commit the result.
 
 REPO_URL = "https://github.com/benbalter/wordpress-static-site-exporter"
-BLOB_URL = "#{REPO_URL}/blob/master"
+BLOB_URL = "#{REPO_URL}/blob/main"
 PLUGIN_FILE = "jekyll-exporter.php"
 HEADER = "docs/header.md"
 INTRO = "docs/README.md"
@@ -52,11 +52,44 @@ SECTIONS.each do |name|
   output << "\n\n" << File.read(path)
 end
 
-# Markdown headings to WordPress.org readme headings. Deepest first, so an
-# already-converted heading is not matched again.
-output.gsub!(/^### ?(.*?)$/, '= \1 =')
-output.gsub!(/^## ?(.*?)$/, '== \1 ==')
-output.gsub!(/^# ?(.*?)$/, '=== \1 ===')
+# WordPress.org's readme parser doesn't understand fenced code blocks: it
+# reads a backtick at the start of a line as inline code, so a fence turns
+# into an empty block followed by the code as a paragraph, where WordPress
+# curls quotes and turns `--flag` into an en dash. Indented code blocks are
+# the form it renders as <pre><code>. A fence inside a list item is indented
+# past the item's own indent, so the code stays part of the item.
+#
+# Headings are converted in the same pass so a `#` comment inside a code
+# block stays a comment. Deepest first, so an already-converted heading is
+# not matched again.
+FENCE = /^(\s*)(```|~~~)/
+in_fence = nil
+output = output.lines.map do |line|
+  if in_fence
+    if line.match?(/^\s*#{Regexp.escape(in_fence[:marker])}\s*$/)
+      in_fence = nil
+      next "\n"
+    end
+    next "\n" if line.strip.empty?
+
+    next (" " * in_fence[:indent]) + line.sub(/^ {0,#{in_fence[:strip]}}/, "")
+  end
+
+  if (fence = line.match(FENCE))
+    strip = fence[1].length
+    list_indent = strip.zero? ? 0 : 4 * ((strip + 3) / 4)
+    in_fence = { :marker => fence[2], :strip => strip, :indent => list_indent + 4 }
+    next "\n"
+  end
+
+  line.sub(/^### ?(.*?)$/, '= \1 =')
+      .sub(/^## ?(.*?)$/, '== \1 ==')
+      .sub(/^# ?(.*?)$/, '=== \1 ===')
+end.join
+die "unclosed code fence" if in_fence
+
+# Collapse the blank lines left where fences were.
+output.gsub!(/\n{3,}/, "\n\n")
 
 # Relative Markdown links point at GitHub, which is where the docs are actually
 # served -- the ben.balter.com docs site does not resolve. Targets are written

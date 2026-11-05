@@ -37,14 +37,13 @@ One-click WordPress plugin that converts all posts, pages, taxonomies, metadata,
 
 See [the full documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs):
 
-* [Changelog](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/changelog.md)
-* [Command-line-usage](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/command-line-usage.md)
-* [Selective export by category or tag](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/selective-export.md)
-* [Custom post types](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/custom-post-types.md)
-* [Custom fields](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/custom-fields.md)
-* [Developing locally](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/developing-locally.md)
-* [Minimum required PHP version](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/docs/required-php-version.md)
-
+* [Changelog](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/changelog.md)
+* [Command-line-usage](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/command-line-usage.md)
+* [Selective export by category or tag](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/selective-export.md)
+* [Custom post types](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/custom-post-types.md)
+* [Custom fields](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/custom-fields.md)
+* [Developing locally](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/developing-locally.md)
+* [Minimum required PHP version](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/required-php-version.md)
 
 === Selective Export by Category or Tag ===
 
@@ -62,58 +61,42 @@ The easiest way to perform selective exports is via WP-CLI commands.
 
 To export posts from a single category, use the category slug:
 
-```bash
-wp jekyll-export --category=technology > technology-export.zip
-```
+    wp jekyll-export --category=technology > technology-export.zip
 
 To export from multiple categories (OR logic - posts in any of these categories):
 
-```bash
-wp jekyll-export --category=tech,news,updates > export.zip
-```
+    wp jekyll-export --category=tech,news,updates > export.zip
 
 = Export by Tag =
 
 To export posts with a specific tag:
 
-```bash
-wp jekyll-export --tag=featured > featured-export.zip
-```
+    wp jekyll-export --tag=featured > featured-export.zip
 
 To export posts with multiple tags (OR logic):
 
-```bash
-wp jekyll-export --tag=featured,popular > export.zip
-```
+    wp jekyll-export --tag=featured,popular > export.zip
 
 = Export Specific Post Types =
 
 To export only pages:
 
-```bash
-wp jekyll-export --post_type=page > pages-export.zip
-```
+    wp jekyll-export --post_type=page > pages-export.zip
 
 To export only posts:
 
-```bash
-wp jekyll-export --post_type=post > posts-export.zip
-```
+    wp jekyll-export --post_type=post > posts-export.zip
 
 To export custom post types:
 
-```bash
-wp jekyll-export --post_type=portfolio,testimonial > custom-export.zip
-```
+    wp jekyll-export --post_type=portfolio,testimonial > custom-export.zip
 
 = Combining Filters =
 
 You can combine multiple filters. Posts must match ALL specified filters (AND logic):
 
-```bash
-=== Export posts that are in "technology" category AND have "featured" tag ===
-wp jekyll-export --category=technology --tag=featured --post_type=post > export.zip
-```
+    # Export posts that are in "technology" category AND have "featured" tag
+    wp jekyll-export --category=technology --tag=featured --post_type=post > export.zip
 
 == Using PHP Filters ==
 
@@ -121,53 +104,43 @@ For more programmatic control, you can use WordPress filters directly in your th
 
 = Filter by Category =
 
-```php
-add_filter( 'jekyll_export_taxonomy_filters', function() {
-    return array(
-        'category' => array( 'technology', 'science' ),
-    );
-} );
-```
+    add_filter( 'jekyll_export_taxonomy_filters', function() {
+        return array(
+            'category' => array( 'technology', 'science' ),
+        );
+    } );
 
 = Filter by Tag =
 
-```php
-add_filter( 'jekyll_export_taxonomy_filters', function() {
-    return array(
-        'post_tag' => array( 'featured', 'popular' ),
-    );
-} );
-```
+    add_filter( 'jekyll_export_taxonomy_filters', function() {
+        return array(
+            'post_tag' => array( 'featured', 'popular' ),
+        );
+    } );
 
 = Filter by Custom Taxonomy =
 
-```php
-add_filter( 'jekyll_export_taxonomy_filters', function() {
-    return array(
-        'my_custom_taxonomy' => array( 'term-slug-1', 'term-slug-2' ),
-    );
-} );
-```
+    add_filter( 'jekyll_export_taxonomy_filters', function() {
+        return array(
+            'my_custom_taxonomy' => array( 'term-slug-1', 'term-slug-2' ),
+        );
+    } );
 
 = Combine Multiple Taxonomies =
 
-```php
-add_filter( 'jekyll_export_taxonomy_filters', function() {
-    return array(
-        'category' => array( 'technology' ),
-        'post_tag' => array( 'featured' ),
-        'custom_tax' => array( 'term-1' ),
-    );
-} );
-```
+    add_filter( 'jekyll_export_taxonomy_filters', function() {
+        return array(
+            'category' => array( 'technology' ),
+            'post_tag' => array( 'featured' ),
+            'custom_tax' => array( 'term-1' ),
+        );
+    } );
 
 = Filter Post Types =
 
-```php
-add_filter( 'jekyll_export_post_types', function() {
-    return array( 'post', 'page' ); // Only export posts and pages
-} );
-```
+    add_filter( 'jekyll_export_post_types', function() {
+        return array( 'post', 'page' ); // Only export posts and pages
+    } );
 
 == Finding Category and Tag Slugs ==
 
@@ -184,15 +157,11 @@ If you're not sure what slug to use:
 
 List all categories with their slugs:
 
-```bash
-wp term list category --fields=name,slug
-```
+    wp term list category --fields=name,slug
 
 List all tags with their slugs:
 
-```bash
-wp term list post_tag --fields=name,slug
-```
+    wp term list post_tag --fields=name,slug
 
 == Use Cases ==
 
@@ -200,35 +169,27 @@ wp term list post_tag --fields=name,slug
 
 You have a WordPress site with multiple sections (Tech, Lifestyle, Travel) and want to move just the Tech section to a static site:
 
-```bash
-wp jekyll-export --category=tech > tech-blog-export.zip
-```
+    wp jekyll-export --category=tech > tech-blog-export.zip
 
 = Scenario 2: Export Featured Content =
 
 You want to export only posts marked as "featured" for a special showcase site:
 
-```bash
-wp jekyll-export --tag=featured > featured-content.zip
-```
+    wp jekyll-export --tag=featured > featured-content.zip
 
 = Scenario 3: Export by Year (using custom taxonomy) =
 
 If you've tagged posts by year, you can export by year:
 
-```bash
-wp jekyll-export --tag=2024 > 2024-posts.zip
-```
+    wp jekyll-export --tag=2024 > 2024-posts.zip
 
 = Scenario 4: Migrate Content Incrementally =
 
 Export different categories separately for incremental migration:
 
-```bash
-wp jekyll-export --category=tech > tech.zip
-wp jekyll-export --category=news > news.zip
-wp jekyll-export --category=reviews > reviews.zip
-```
+    wp jekyll-export --category=tech > tech.zip
+    wp jekyll-export --category=news > news.zip
+    wp jekyll-export --category=reviews > reviews.zip
 
 == Technical Details ==
 
@@ -263,19 +224,15 @@ If you're getting unexpected posts:
 2. **Review filter logic**: Remember that multiple categories use OR logic
 3. **Clear cache**: If testing, use `wp cache flush` between exports
 
-
 == Custom post types ==
 
 To export custom post types, you'll need to add a filter (w.g. to your themes config file) to do the following:
 
-```php
-add_filter( 'jekyll_export_post_types', function() {
-	return array('post', 'page', 'you-custom-post-type');
-});
-```
+    add_filter( 'jekyll_export_post_types', function() {
+    	return array('post', 'page', 'you-custom-post-type');
+    });
 
 The custom post type will be exported as a Jekyll collection. You'll need to initialize it in the resulting Jekyll site's `_config.yml`.
-
 
 == Changelog ==
 
@@ -375,7 +332,6 @@ This release changes what some exports contain. Review the notes marked **Export
 
 [View Past Releases](https://github.com/benbalter/wordpress-to-jekyll-exporter/releases)
 
-
 == Developing locally ==
 
 = Option 1: Using Dev Containers (Recommended) =
@@ -395,7 +351,7 @@ The devcontainer includes:
 - VS Code extensions for PHP development, debugging, and testing
 - WordPress coding standards configured
 
-See [.devcontainer/README.md](https://github.com/benbalter/wordpress-static-site-exporter/blob/master/.devcontainer/README.md) for more details.
+See [.devcontainer/README.md](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/.devcontainer/README.md) for more details.
 
 = Option 2: Manual Setup =
 
@@ -444,83 +400,71 @@ The plugin provides two filters for customizing post metadata:
 
 By default, the plugin saves custom fields in an array structure that is exported as: 
 
-```php
-["my-bool"]=>
-    array(1) {
-        [0] => string(1) "1"
-    }
-["location"]=>
-    array(1) {
-        [0] => string(88) "My address"
-    }
-```
+    ["my-bool"]=>
+        array(1) {
+            [0] => string(1) "1"
+        }
+    ["location"]=>
+        array(1) {
+            [0] => string(88) "My address"
+        }
 
 And this leads to a YAML structure like:
 
-```yaml
-my-bool:
-- "1"
-location:
-- 'My address'
-```
+    my-bool:
+    - "1"
+    location:
+    - 'My address'
 
 This is likely not the structure you expect or want to work with. You can convert it using a filter:
 
-```php
-add_filter( 'jekyll_export_meta', function($meta) {
-    foreach ($meta as $key => $value) {
-        if (is_array($value) && count($value) === 1 && array_key_exists(0, $value)) {
-            $meta[$key] = $value[0];
+    add_filter( 'jekyll_export_meta', function($meta) {
+        foreach ($meta as $key => $value) {
+            if (is_array($value) && count($value) === 1 && array_key_exists(0, $value)) {
+                $meta[$key] = $value[0];
+            }
         }
-    }
 
-    return $meta;
-});
-```
+        return $meta;
+    });
 
 A more complete solution could look like that:
 
-```php
-add_filter( 'jekyll_export_meta', function($meta) {
-    foreach ($meta as $key => $value) {
-        // Advanced Custom Fields
-        if (is_array($value) && count($value) === 1 && array_key_exists(0, $value)) {
-            $value = maybe_unserialize($value[0]);
-            // Advanced Custom Fields: NextGEN Gallery Field add-on
+    add_filter( 'jekyll_export_meta', function($meta) {
+        foreach ($meta as $key => $value) {
+            // Advanced Custom Fields
             if (is_array($value) && count($value) === 1 && array_key_exists(0, $value)) {
-                $value = $value[0];
+                $value = maybe_unserialize($value[0]);
+                // Advanced Custom Fields: NextGEN Gallery Field add-on
+                if (is_array($value) && count($value) === 1 && array_key_exists(0, $value)) {
+                    $value = $value[0];
+                }
             }
+            // convert types
+            $value = match ($key) {
+                // Advanced Custom Fields: "true_false" type
+                'my-bool' => (bool) $value,
+                default => $value
+            };
+            $meta[$key] = $value;
         }
-        // convert types
-        $value = match ($key) {
-            // Advanced Custom Fields: "true_false" type
-            'my-bool' => (bool) $value,
-            default => $value
-        };
-        $meta[$key] = $value;
-    }
 
-    return $meta;
-});
-```
+        return $meta;
+    });
 
 = Removing Empty or Falsy Values =
 
 If you want to remove empty or falsy values from the frontmatter (similar to the pre-3.0.3 behavior), you can use the `jekyll_export_post_meta` filter:
 
-```php
-add_filter( 'jekyll_export_post_meta', function( $meta, $post ) {
-    foreach ( $meta as $key => $value ) {
-        // Remove falsy values except numeric 0
-        if ( ! is_numeric( $value ) && ! $value ) {
-            unset( $meta[ $key ] );
+    add_filter( 'jekyll_export_post_meta', function( $meta, $post ) {
+        foreach ( $meta as $key => $value ) {
+            // Remove falsy values except numeric 0
+            if ( ! is_numeric( $value ) && ! $value ) {
+                unset( $meta[ $key ] );
+            }
         }
-    }
-    return $meta;
-}, 10, 2 );
-```
-
-
+        return $meta;
+    }, 10, 2 );
 
 == Command-line Usage ==
 
@@ -528,25 +472,19 @@ If you're having trouble with your web server timing out before the export is co
 
 It works just like the plugin, but produces the zipfile on STDOUT:
 
-```
-php jekyll-export-cli.php > jekyll-export.zip
-```
+    php jekyll-export-cli.php > jekyll-export.zip
 
 If using this method, you must run first `cd` into the wordpress-to-jekyll-exporter directory.
 
 Alternatively, if you have [WP-CLI](http://wp-cli.org) installed, you can run:
 
-```
-wp jekyll-export > export.zip
-```
+    wp jekyll-export > export.zip
 
 The WP-CLI version will provide greater compatibility for alternate WordPress environments, such as when `wp-content` isn't in the usual location.
 
 To write the zip straight to a file instead of STDOUT, pass `--output`. This keeps a stray PHP notice or warning from ending up inside the archive:
 
-```
-wp jekyll-export --output=export.zip
-```
+    wp jekyll-export --output=export.zip
 
 == Filtering by Category or Tag ==
 
@@ -554,51 +492,38 @@ You can export only specific categories or tags using the WP-CLI command. This i
 
 = Export posts from a specific category: =
 
-```bash
-wp jekyll-export --category=technology > export.zip
-```
+    wp jekyll-export --category=technology > export.zip
 
 = Export posts from multiple categories: =
 
-```bash
-wp jekyll-export --category=tech,news,updates > export.zip
-```
+    wp jekyll-export --category=tech,news,updates > export.zip
 
 = Export posts with a specific tag: =
 
-```bash
-wp jekyll-export --tag=featured > export.zip
-```
+    wp jekyll-export --tag=featured > export.zip
 
 = Export only pages (or specific post types): =
 
-```bash
-wp jekyll-export --post_type=page > export.zip
-```
+    wp jekyll-export --post_type=page > export.zip
 
 = Combine filters: =
 
-```bash
-wp jekyll-export --category=technology --tag=featured --post_type=post > export.zip
-```
+    wp jekyll-export --category=technology --tag=featured --post_type=post > export.zip
 
 == Using Filters in PHP ==
 
 If you're using the plugin via PHP code or want more control, you can use the `jekyll_export_taxonomy_filters` filter:
 
-```php
-add_filter( 'jekyll_export_taxonomy_filters', function() {
-    return array(
-        'category' => array( 'technology', 'science' ),
-        'post_tag' => array( 'featured' ),
-    );
-} );
+    add_filter( 'jekyll_export_taxonomy_filters', function() {
+        return array(
+            'category' => array( 'technology', 'science' ),
+            'post_tag' => array( 'featured' ),
+        );
+    } );
 
-// Then trigger the export
-global $jekyll_export;
-$jekyll_export->export();
-```
-
+    // Then trigger the export
+    global $jekyll_export;
+    $jekyll_export->export();
 
 == Where to get help or report an issue ==
 
@@ -622,7 +547,6 @@ $jekyll_export->export();
 * Are there any screenshots or screencasts that may be helpful to include?
 * Only include one bug per issue. If you have discovered two bugs, please file two issues.
 
-
 === Performance Optimizations ===
 
 This document describes the performance optimizations implemented in Static Site Exporter to improve export speed and reduce resource usage, especially for large WordPress sites.
@@ -635,22 +559,18 @@ The following optimizations have been implemented to address performance bottlen
 
 **Problem**: The original `get_posts()` method executed a separate SQL query for each post type, then merged the results using `array_merge()`.
 
-```php
-// Before (inefficient)
-foreach ( $post_types as $post_type ) {
-    $ids   = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s", $post_type ) );
-    $posts = array_merge( $posts, $ids );
-}
-```
+    // Before (inefficient)
+    foreach ( $post_types as $post_type ) {
+        $ids   = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s", $post_type ) );
+        $posts = array_merge( $posts, $ids );
+    }
 
 **Solution**: Changed to a single SQL query using an IN clause.
 
-```php
-// After (optimized)
-$placeholders = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
-$query        = "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ($placeholders)";
-$posts        = $wpdb->get_col( $wpdb->prepare( $query, $post_types ) );
-```
+    // After (optimized)
+    $placeholders = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
+    $query        = "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ($placeholders)";
+    $posts        = $wpdb->get_col( $wpdb->prepare( $query, $post_types ) );
 
 **Impact**: Reduces database round trips from N (number of post types, typically 3) to 1, significantly improving performance on sites with many posts.
 
@@ -660,22 +580,18 @@ $posts        = $wpdb->get_col( $wpdb->prepare( $query, $post_types ) );
 
 **Problem**: The `convert_meta()` method called `get_userdata()` for every post, resulting in redundant database queries for posts by the same author (N+1 query problem).
 
-```php
-// Before (inefficient)
-'author'  => get_userdata( $post->post_author )->display_name,
-```
+    // Before (inefficient)
+    'author'  => get_userdata( $post->post_author )->display_name,
 
 **Solution**: Implemented a static cache to store user data across post conversions.
 
-```php
-// After (optimized)
-static $user_cache = array();
-if ( ! isset( $user_cache[ $post->post_author ] ) ) {
-    $user_data                        = get_userdata( $post->post_author );
-    $user_cache[ $post->post_author ] = $user_data ? $user_data->display_name : '';
-}
-'author' => $user_cache[ $post->post_author ],
-```
+    // After (optimized)
+    static $user_cache = array();
+    if ( ! isset( $user_cache[ $post->post_author ] ) ) {
+        $user_data                        = get_userdata( $post->post_author );
+        $user_cache[ $post->post_author ] = $user_data ? $user_data->display_name : '';
+    }
+    'author' => $user_cache[ $post->post_author ],
 
 **Impact**: Eliminates redundant database queries for author information. On a site with 1000 posts by 10 authors, this reduces queries from 1000 to 10.
 
@@ -685,23 +601,19 @@ if ( ! isset( $user_cache[ $post->post_author ] ) ) {
 
 **Problem**: A new `HtmlConverter` instance was created for every post, wasting memory and CPU cycles on object initialization.
 
-```php
-// Before (inefficient)
-$converter = new HtmlConverter( $converter_options );
-$converter->getEnvironment()->addConverter( new TableConverter() );
-```
+    // Before (inefficient)
+    $converter = new HtmlConverter( $converter_options );
+    $converter->getEnvironment()->addConverter( new TableConverter() );
 
 **Solution**: Reuse a single static instance across all post conversions.
 
-```php
-// After (optimized)
-static $converter = null;
-if ( null === $converter ) {
-    $converter_options = apply_filters( 'jekyll_export_markdown_converter_options', array( 'header_style' => 'atx' ) );
-    $converter         = new HtmlConverter( $converter_options );
-    $converter->getEnvironment()->addConverter( new TableConverter() );
-}
-```
+    // After (optimized)
+    static $converter = null;
+    if ( null === $converter ) {
+        $converter_options = apply_filters( 'jekyll_export_markdown_converter_options', array( 'header_style' => 'atx' ) );
+        $converter         = new HtmlConverter( $converter_options );
+        $converter->getEnvironment()->addConverter( new TableConverter() );
+    }
 
 **Impact**: Reduces object creation overhead. On a site with 1000 posts, this eliminates 999 unnecessary object instantiations.
 
@@ -711,27 +623,23 @@ if ( null === $converter ) {
 
 **Problem**: The `copy_recursive()` method used the legacy `dir()` API which is slower than modern alternatives.
 
-```php
-// Before (inefficient)
-$dir = dir( $source );
-while ( $entry = $dir->read() ) {
-    // process files
-}
-$dir->close();
-```
+    // Before (inefficient)
+    $dir = dir( $source );
+    while ( $entry = $dir->read() ) {
+        // process files
+    }
+    $dir->close();
 
 **Solution**: Replaced with `scandir()` which is faster and more memory-efficient.
 
-```php
-// After (optimized)
-$entries = @scandir( $source );
-if ( false === $entries ) {
-    return false;
-}
-foreach ( $entries as $entry ) {
-    // process files
-}
-```
+    // After (optimized)
+    $entries = @scandir( $source );
+    if ( false === $entries ) {
+        return false;
+    }
+    foreach ( $entries as $entry ) {
+        // process files
+    }
 
 **Impact**: Improves directory traversal speed, particularly noticeable when copying large upload directories.
 
@@ -742,16 +650,14 @@ foreach ( $entries as $entry ) {
 **New Feature**: Added filters to allow skipping or excluding directories during the upload copy process.
 
 **Skip Entire Uploads**:
-```php
-add_filter( 'jekyll_export_skip_uploads', '__return_true' );
-```
+
+    add_filter( 'jekyll_export_skip_uploads', '__return_true' );
 
 **Exclude Specific Directories** (e.g., cache or temporary files):
-```php
-add_filter( 'jekyll_export_excluded_upload_dirs', function( $excluded ) {
-    return array_merge( $excluded, array( '/cache/', '/tmp/', '/backup/' ) );
-} );
-```
+
+    add_filter( 'jekyll_export_excluded_upload_dirs', function( $excluded ) {
+        return array_merge( $excluded, array( '/cache/', '/tmp/', '/backup/' ) );
+    } );
 
 **Impact**: Allows large sites to:
 - Skip uploads entirely if they're served from a CDN
@@ -799,19 +705,16 @@ All optimizations maintain backward compatibility:
 For even better performance on large sites:
 
 1. **Increase PHP memory limit**: Add to `wp-config.php`:
-   ```php
-   define( 'WP_MEMORY_LIMIT', '512M' );
-   ```
+
+        define( 'WP_MEMORY_LIMIT', '512M' );
 
 2. **Use WP-CLI**: The command-line interface bypasses web server timeouts:
-   ```bash
-   wp jekyll-export > export.zip
-   ```
+
+        wp jekyll-export > export.zip
 
 3. **Skip uploads if using CDN**: If your uploads are served from a CDN, you can skip copying them:
-   ```php
-   add_filter( 'jekyll_export_skip_uploads', '__return_true' );
-   ```
+
+        add_filter( 'jekyll_export_skip_uploads', '__return_true' );
 
 4. **Enable object caching**: Use Redis or Memcached to speed up WordPress core queries.
 
@@ -853,7 +756,6 @@ For questions about these optimizations or to report performance issues:
 - [Open an issue](https://github.com/benbalter/wordpress-to-jekyll-exporter/issues)
 - [View the documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs)
 
-
 === Performance Tips for Large Sites ===
 
 If you're running a large WordPress site with thousands of posts or gigabytes of uploads, here are some tips to make the export process faster and more efficient.
@@ -864,18 +766,14 @@ If you're running a large WordPress site with thousands of posts or gigabytes of
 
 Browser-based exports are subject to PHP execution time limits (typically 30-300 seconds). Use WP-CLI for unlimited execution time:
 
-```bash
-wp jekyll-export > export.zip
-```
+    wp jekyll-export > export.zip
 
 = 2. Skip Uploads if You Don't Need Them =
 
 If your images and files are served from a CDN or you plan to handle them separately, you can skip the uploads directory entirely:
 
-```php
-// Add to your theme's functions.php or a custom plugin
-add_filter( 'jekyll_export_skip_uploads', '__return_true' );
-```
+    // Add to your theme's functions.php or a custom plugin
+    add_filter( 'jekyll_export_skip_uploads', '__return_true' );
 
 This can save significant time and disk space, especially if you have gigabytes of media files.
 
@@ -883,17 +781,15 @@ This can save significant time and disk space, especially if you have gigabytes 
 
 Many sites accumulate cache files and temporary uploads that aren't needed in the export:
 
-```php
-add_filter( 'jekyll_export_excluded_upload_dirs', function( $excluded ) {
-    return array_merge( $excluded, array(
-        '/cache/',
-        '/tmp/',
-        '/backup/',
-        '/wc-logs/',  // WooCommerce logs
-        '/wpml/',     // WPML cache
-    ) );
-} );
-```
+    add_filter( 'jekyll_export_excluded_upload_dirs', function( $excluded ) {
+        return array_merge( $excluded, array(
+            '/cache/',
+            '/tmp/',
+            '/backup/',
+            '/wc-logs/',  // WooCommerce logs
+            '/wpml/',     // WPML cache
+        ) );
+    } );
 
 == Performance Improvements in Version 2.4.3+ ==
 
@@ -911,73 +807,61 @@ If exports are still timing out, try these solutions:
 
 Add to your `wp-config.php`:
 
-```php
-define( 'WP_MEMORY_LIMIT', '512M' );
-@ini_set( 'max_execution_time', '600' ); // 10 minutes
-```
+    define( 'WP_MEMORY_LIMIT', '512M' );
+    @ini_set( 'max_execution_time', '600' ); // 10 minutes
 
 = Export Only Specific Post Types =
 
 If you only need posts (not pages or other custom post types):
 
-```php
-add_filter( 'jekyll_export_post_types', function() {
-    return array( 'post' ); // Only export posts
-} );
-```
+    add_filter( 'jekyll_export_post_types', function() {
+        return array( 'post' ); // Only export posts
+    } );
 
 = Run Export During Off-Peak Hours =
 
 Schedule the export using WP-CLI and cron during low-traffic periods:
 
-```bash
-=== Add to crontab to run at 3 AM ===
-0 3 * * 0 cd /path/to/wordpress && wp jekyll-export > /path/to/backups/jekyll-$(date +\%Y\%m\%d).zip
-```
+    # Add to crontab to run at 3 AM
+    0 3 * * 0 cd /path/to/wordpress && wp jekyll-export > /path/to/backups/jekyll-$(date +\%Y\%m\%d).zip
 
 == Measuring Performance ==
 
 To see how long your export takes:
 
 = Via WP-CLI with Timing =
-```bash
-time wp jekyll-export > export.zip
-```
+
+    time wp jekyll-export > export.zip
 
 = Via PHP Script =
-```php
-$start = microtime(true);
-// ... run export ...
-$duration = microtime(true) - $start;
-error_log("Export completed in " . round($duration, 2) . " seconds");
-```
+
+    $start = microtime(true);
+    // ... run export ...
+    $duration = microtime(true) - $start;
+    error_log("Export completed in " . round($duration, 2) . " seconds");
 
 = Via the `jekyll_export_complete` action =
 
 `jekyll_export_complete` fires once after a successful export, after the archive has been sent or saved and temporary files have been cleaned up. It does not fire when the export fails. Output echoed by a callback is discarded.
 
-```php
-add_action( 'jekyll_export', function() {
-    update_option( 'jekyll_export_start_time', microtime( true ) );
-} );
+    add_action( 'jekyll_export', function() {
+        update_option( 'jekyll_export_start_time', microtime( true ) );
+    } );
 
-add_action( 'jekyll_export_complete', function() {
-    $start = get_option( 'jekyll_export_start_time' );
-    if ( $start ) {
-        $duration = microtime( true ) - $start;
-        error_log( sprintf( 'Jekyll export completed in %.2f seconds', $duration ) );
-        delete_option( 'jekyll_export_start_time' );
-    }
-} );
-```
+    add_action( 'jekyll_export_complete', function() {
+        $start = get_option( 'jekyll_export_start_time' );
+        if ( $start ) {
+            $duration = microtime( true ) - $start;
+            error_log( sprintf( 'Jekyll export completed in %.2f seconds', $duration ) );
+            delete_option( 'jekyll_export_start_time' );
+        }
+    } );
 
 == Database Optimization ==
 
 Before exporting, optimize your database:
 
-```bash
-wp db optimize
-```
+    wp db optimize
 
 This can improve query performance during the export process.
 
@@ -1013,7 +897,6 @@ Include in your report:
 - Export duration or timeout details
 - Any relevant error messages
 
-
 == Minimum required PHP version ==
 
 Many shared hosts may use an outdated version of PHP by default. **Static Site Exporter requires PHP 8.2 or greater.**
@@ -1030,7 +913,6 @@ PHP 5.4 lost support from the PHP project itself in 2015. You'll need to be runn
 = How to upgrade your version of PHP =
 
 If you are using a shared hosting environment, upgrading to a newer version of PHP should be a matter of changing a setting in your host's control panel. You'll have to follow your host specific documentation to determine how to access it or where the setting lives. Check out [this list of common hosts](https://kb.yoast.com/kb/how-to-update-your-php-version/) for more details.
-
 
 === Security Policy ===
 
