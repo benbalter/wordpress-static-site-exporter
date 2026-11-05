@@ -1,4 +1,4 @@
-![Static Site Exporter logo header](https://user-images.githubusercontent.com/282759/120906741-fae1e880-c629-11eb-81df-201a3a749d75.png)
+![Static Site Exporter: WordPress to Markdown for Jekyll, Hugo, and more](../.wordpress-org/banner-1544x500.png)
   
 # Static Site Exporter: WordPress to Jekyll and Hugo Markdown exporter
 

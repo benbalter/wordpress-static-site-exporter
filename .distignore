@@ -4,6 +4,7 @@
 /.git
 /.github
 /.claude
+/.wordpress-org
 /.devcontainer
 /CLAUDE.md
 /.distignore

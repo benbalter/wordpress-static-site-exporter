@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>Static Site Exporter</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
+  <!-- An open shipping box, drawn isometrically: left face, right face, lid. -->
+  <g transform="translate(0 12)">
+  <g stroke-linejoin="round">
+    <path d="M128 92 L58 64 L58 162 L128 196 Z" fill="#f4c20d"/>
+    <path d="M128 92 L198 64 L198 162 L128 196 Z" fill="#d9a800"/>
+    <path d="M58 64 L128 36 L198 64 L128 92 Z" fill="#ffd94a"/>
+    <!-- Tape across the lid. -->
+    <path d="M93 50 L163 78 L163 88 L93 60 Z" fill="#e0b000" opacity="0.9"/>
+  </g>
+  <!-- Markdown's "M" and down arrow on the front face, skewed to sit on it. -->
+  <g transform="matrix(1 0.4 0 1 0 0)" fill="#0f172a">
+    <path d="M70 72 h9 l8 12 l8 -12 h9 v36 h-9 v-21 l-8 12 l-8 -12 v21 h-9 Z"/>
+    <path d="M111 72 h8 v19 h7 l-11 15 l-11 -15 h7 Z"/>
+  </g>
+  </g>
+</svg>

@@ -26,6 +26,7 @@ SECTIONS = %w[
   performance-tips
   SUPPORT
   faq
+  screenshots
   changelog
   upgrade-notice
 ].freeze
