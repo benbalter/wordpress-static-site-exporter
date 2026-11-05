@@ -24,6 +24,18 @@ To write the zip straight to a file instead of STDOUT, pass `--output`. This kee
 wp jekyll-export --output=export.zip
 ```
 
+To leave out drafts and other unpublished content, pass the statuses you want with `--post_status`:
+
+```
+wp jekyll-export --post_status=publish > export.zip
+```
+
+If your media is served from a CDN, or the uploads folder is too big to zip, pass `--skip-uploads` to export without `wp-content/uploads`:
+
+```
+wp jekyll-export --skip-uploads > export.zip
+```
+
 ## Filtering by Category or Tag
 
 You can export only specific categories or tags using the WP-CLI command. This is useful when you want to convert just one section of your WordPress site instead of the entire corpus.

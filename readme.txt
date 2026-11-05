@@ -226,13 +226,13 @@ If you're getting unexpected posts:
 
 == Custom post types ==
 
-To export custom post types, you'll need to add a filter (w.g. to your themes config file) to do the following:
+To export custom post types, add a filter (e.g., in your theme's `functions.php`) like this:
 
     add_filter( 'jekyll_export_post_types', function() {
-    	return array('post', 'page', 'you-custom-post-type');
+    	return array('post', 'page', 'your-custom-post-type');
     });
 
-The custom post type will be exported as a Jekyll collection. You'll need to initialize it in the resulting Jekyll site's `_config.yml`.
+Each custom post type is exported as a Jekyll collection: posts of type `portfolio` go in `_portfolios/`, and the exported `_config.yml` declares that collection with `output: true`, so Jekyll builds a page for each one.
 
 == Changelog ==
 
@@ -485,6 +485,14 @@ The WP-CLI version will provide greater compatibility for alternate WordPress en
 To write the zip straight to a file instead of STDOUT, pass `--output`. This keeps a stray PHP notice or warning from ending up inside the archive:
 
     wp jekyll-export --output=export.zip
+
+To leave out drafts and other unpublished content, pass the statuses you want with `--post_status`:
+
+    wp jekyll-export --post_status=publish > export.zip
+
+If your media is served from a CDN, or the uploads folder is too big to zip, pass `--skip-uploads` to export without `wp-content/uploads`:
+
+    wp jekyll-export --skip-uploads > export.zip
 
 == Filtering by Category or Tag ==
 
