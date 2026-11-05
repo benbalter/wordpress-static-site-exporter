@@ -18,13 +18,12 @@ INTRO = "docs/README.md"
 # Changelog, and Upgrade Notice their own tabs and folds every other section
 # into Description. Its audience is site owners, so developer docs
 # (developing-locally, performance-optimizations) stay GitHub-only.
+#
+# The description is deliberately short: one-click export is the point, and
+# a long description pushes the screenshots below the fold. Advanced usage
+# (CLI, selective export, filters, custom post types, large sites) lives in
+# docs/advanced-usage.md and its pages, which the README links to.
 SECTIONS = %w[
-  selective-export
-  custom-post-types
-  custom-fields
-  command-line-usage
-  performance-tips
-  SUPPORT
   faq
   screenshots
   changelog
@@ -48,7 +47,14 @@ die "no Stable tag line in #{HEADER}" unless output.sub!(/^Stable tag:.*$/, "Sta
 intro = File.read(INTRO)
 intro_start = intro.index(/^## /)
 die "no section headings in #{INTRO}" if intro_start.nil?
-output << "\n" << intro[intro_start..]
+
+# The README's opening paragraph (after the title, before the badges) is the
+# description's first paragraph, so the pitch is written once.
+pitch = intro[0...intro_start].lines.map(&:strip).find do |line|
+  !line.empty? && !line.start_with?("#", "!", "[![")
+end
+die "no intro paragraph in #{INTRO}" if pitch.nil?
+output << "\n" << pitch << "\n\n" << intro[intro_start..]
 
 SECTIONS.each do |name|
   path = File.join("docs", "#{name}.md")

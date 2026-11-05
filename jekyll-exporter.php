@@ -145,7 +145,7 @@ class Jekyll_Export {
 
 		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'jekyll_export' ) ) {
 			wp_die(
-				esc_html__( 'This export link has expired. Reload the page, then choose Export to Jekyll from the Tools menu again.', 'jekyll-exporter' ),
+				esc_html__( 'This export link has expired. Reload the page, then choose Export to Static Site from the Tools menu again.', 'jekyll-exporter' ),
 				esc_html__( 'Export link expired', 'jekyll-exporter' ),
 				array(
 					'response'  => 403,
@@ -163,7 +163,7 @@ class Jekyll_Export {
 	 * Add menu option to tools list
 	 */
 	public function register_menu() {
-		add_management_page( __( 'Export to Jekyll', 'jekyll-exporter' ), __( 'Export to Jekyll', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll&_wpnonce=' . wp_create_nonce( 'jekyll_export' ) );
+		add_management_page( __( 'Export to Static Site', 'jekyll-exporter' ), __( 'Export to Static Site', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll&_wpnonce=' . wp_create_nonce( 'jekyll_export' ) );
 	}
 
 	/**
@@ -186,7 +186,7 @@ class Jekyll_Export {
 		}
 
 		echo '<div class="notice notice-error"><p>';
-		echo '<strong>' . esc_html__( 'Jekyll Export:', 'jekyll-exporter' ) . '</strong> ';
+		echo '<strong>' . esc_html__( 'Static Site Exporter:', 'jekyll-exporter' ) . '</strong> ';
 		echo wp_kses_post( implode( '<br>', $validation->get_error_messages() ) );
 		echo '</p></div>';
 	}
@@ -714,7 +714,7 @@ class Jekyll_Export {
 		if ( is_wp_error( $validation ) ) {
 			wp_die(
 				wp_kses_post( implode( '<br>', $validation->get_error_messages() ) ),
-				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				esc_html__( 'Static Site Exporter', 'jekyll-exporter' ),
 				array( 'back_link' => true )
 			);
 		}
@@ -772,8 +772,8 @@ class Jekyll_Export {
 
 			wp_die(
 				/* translators: %s: error message from the exception */
-				wp_kses_post( sprintf( __( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $e->getMessage() ) ) ),
-				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				wp_kses_post( sprintf( __( 'Export failed: %s', 'jekyll-exporter' ), esc_html( $e->getMessage() ) ) ),
+				esc_html__( 'Static Site Exporter', 'jekyll-exporter' ),
 				array( 'back_link' => true )
 			);
 		} finally {
@@ -805,7 +805,7 @@ class Jekyll_Export {
 		}
 
 		/* translators: %s: error message from the fatal error */
-		return '<p>' . sprintf( esc_html__( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $details ) ) . '</p>';
+		return '<p>' . sprintf( esc_html__( 'Export failed: %s', 'jekyll-exporter' ), esc_html( $details ) ) . '</p>';
 	}
 
 	/**
@@ -818,7 +818,7 @@ class Jekyll_Export {
 	 * @return array The filtered arguments.
 	 */
 	public function fatal_error_args( $args, $error ) {
-		$args['title']     = __( 'Jekyll Export Error', 'jekyll-exporter' );
+		$args['title']     = __( 'Static Site Exporter', 'jekyll-exporter' );
 		$args['back_link'] = true;
 		$args['response']  = 500;
 		return $args;
