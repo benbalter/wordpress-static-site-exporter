@@ -1,9 +1,17 @@
 #composer bloat
+# Runtime dependencies are committed (they ship in the plugin zip); dev
+# dependencies aren't. Git can't re-include a file inside an ignored
+# directory, so each parent directory is re-included first. Without that,
+# `!vendor/league/html-to-markdown/*` matched nothing new: files already
+# tracked stayed, but files added by a dependency update were silently left
+# out, and 4.4.0 shipped without classes its converter needed.
 vendor/*
 !vendor/autoload.php
-!vendor/composer
-!vendor/league/html-to-markdown/*
-!vendor/symfony/*
+!vendor/composer/
+!vendor/league/
+vendor/league/*
+!vendor/league/html-to-markdown/
+!vendor/symfony/
 vendor/**/docs
 vendor/**/test
 vendor/**/tests
