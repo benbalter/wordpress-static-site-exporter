@@ -4,7 +4,7 @@
 
 One-click WordPress plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML which can be dropped into Jekyll (or Hugo or any other Markdown and YAML based site engine).
 
-[![CI](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![WordPress plugin version](https://img.shields.io/wordpress/plugin/v/jekyll-exporter)](https://wordpress.org/plugins/jekyll-exporter/) [![WordPress plugin rating](https://img.shields.io/wordpress/plugin/rating/jekyll-exporter)](https://wordpress.org/support/plugin/jekyll-exporter/reviews/) [![CI](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
 View plugin in [the WordPress plugin directory](https://wordpress.org/plugins/jekyll-exporter/).
 
@@ -21,14 +21,17 @@ View plugin in [the WordPress plugin directory](https://wordpress.org/plugins/je
 
 ## Usage
 
-1. Place plugin in `/wp-content/plugins/` folder
-2. Activate plugin in WordPress dashboard
-3. Select `Export to Jekyll` from the `Tools` menu
+1. In your WordPress dashboard, go to **Plugins → Add New**, search for **Static Site Exporter**, then install and activate it
+2. Select `Export to Jekyll` from the `Tools` menu
+3. Unzip the download into your static site
+
+For large sites, use [WP-CLI](command-line-usage.md) instead: `wp jekyll-export --output=export.zip`.
 
 ## More information
 
-See [the full documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/master/docs):
+See [the full documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/main/docs):
 
+* [Frequently asked questions](../docs/faq.md)
 * [Changelog](../docs/changelog.md)
 * [Command-line-usage](../docs/command-line-usage.md)
 * [Selective export by category or tag](../docs/selective-export.md)
