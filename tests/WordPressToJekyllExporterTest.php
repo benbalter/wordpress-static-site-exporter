@@ -1791,13 +1791,14 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		// Set up the screen and GET params to simulate an export request.
 		$_GET['type'] = 'jekyll';
 		$_GET['_wpnonce'] = wp_create_nonce( 'jekyll_export' );
-		set_current_screen( 'export' );
 
 		// Track whether export() is called by checking if temp dir changes.
 		$dir_before = $jekyll_export->dir;
 
 		// callback() should stop with an explanation, without calling export().
+		// It's hooked to current_screen, so setting the screen runs it.
 		try {
+			set_current_screen( 'export' );
 			$jekyll_export->callback();
 			$this->fail( 'callback() should wp_die() for non-admin users' );
 		} catch ( WPDieException $e ) {
@@ -1823,12 +1824,13 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 
 		// Set up screen and GET params but without nonce.
 		$_GET['type'] = 'jekyll';
-		set_current_screen( 'export' );
 
 		$dir_before = $jekyll_export->dir;
 
 		// callback() should say the link expired, without calling export().
+		// It's hooked to current_screen, so setting the screen runs it.
 		try {
+			set_current_screen( 'export' );
 			$jekyll_export->callback();
 			$this->fail( 'callback() should wp_die() without a valid nonce' );
 		} catch ( WPDieException $e ) {
