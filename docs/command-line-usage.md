@@ -24,6 +24,12 @@ To write the zip straight to a file instead of STDOUT, pass `--output`. This kee
 wp jekyll-export --output=export.zip
 ```
 
+To lay the export out for Hugo, Astro, or Eleventy instead of Jekyll, pass `--format` (see [Output formats](output-formats.md)):
+
+```
+wp jekyll-export --format=hugo --output=export.zip
+```
+
 To leave out drafts and other unpublished content, pass the statuses you want with `--post_status`:
 
 ```

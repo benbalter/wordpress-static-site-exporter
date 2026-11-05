@@ -1,6 +1,10 @@
 # Advanced usage
 
-Most sites only need the one-click export from the Tools menu. Everything here is optional.
+Most sites only need the export from the Tools menu. Everything here is optional.
+
+## Export for Hugo, Astro, or Eleventy
+
+Jekyll is the default. Pick Hugo, Astro, or Eleventy from the format dropdown, or pass `--format=hugo` (or `astro`, `eleventy`) on the command line, and the export is laid out for that generator. See [Output formats](output-formats.md).
 
 ## Export from the command line
 

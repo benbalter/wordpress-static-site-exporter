@@ -2,7 +2,11 @@
 
 ### Does it work with Hugo, Eleventy, or other static site generators?
 
-Yes. Every post becomes a Markdown file with YAML front matter, which most static site generators read. The folders follow Jekyll's layout (`_posts/`, `_drafts/`, `_config.yml`), so for another generator, move the posts into its content folder.
+Yes. Pick Hugo, Astro, or Eleventy from the format dropdown under **Tools → Export to Static Site**, or pass `--format` on the command line, and the export is laid out for that generator, with its folders, draft markers, and config file:
+
+    wp jekyll-export --format=hugo --output=export.zip
+
+Jekyll is the default. Every format is Markdown with YAML front matter, which most other generators read too. See [Output formats](output-formats.md) for what each one includes.
 
 ### My export times out, or the zip file is empty. What can I do?
 
@@ -26,11 +30,11 @@ The export copies `wp-content/uploads` into the zip and rewrites links to your m
 
 ### Will my old URLs keep working?
 
-Each post's front matter includes a `permalink` set to its WordPress URL, so Jekyll publishes it at the same address.
+Each post's front matter includes its WordPress URL (`permalink`, or `url` for Hugo), so Jekyll, Hugo, and Eleventy publish it at the same address. For Astro, [Output formats](output-formats.md) has a route that does the same.
 
 ### Are drafts exported?
 
-Yes, into `_drafts/`. To leave them out, use `wp jekyll-export --post_status=publish`.
+Yes, into `_drafts/` for Jekyll. Hugo, Astro, and Eleventy keep drafts next to your posts, marked `draft: true`. To leave them out, use `wp jekyll-export --post_status=publish`.
 
 ### Does it export custom post types and custom fields?
 
