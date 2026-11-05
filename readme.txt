@@ -4,7 +4,7 @@ Tags: jekyll, hugo, markdown, static site, export
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 4.4.0
+Stable tag: 4.5.0
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-static-site-exporter
@@ -235,6 +235,15 @@ To export custom post types, you'll need to add a filter (w.g. to your themes co
 The custom post type will be exported as a Jekyll collection. You'll need to initialize it in the resulting Jekyll site's `_config.yml`.
 
 == Changelog ==
+
+= 4.5.0 =
+
+This release updates the HTML-to-Markdown converter for two security fixes, which also change some converted Markdown. Review the note marked **Export change** before re-exporting a site you've exported before.
+
+* **Export change:** Updated `league/html-to-markdown` to 5.2.3. It fixes two cases where conversion time grew with the square of a post's size instead of in proportion to it, so a single large or unusual post could stall an export until PHP timed out ([GHSA-h3wg-gqjr-jjmw](https://github.com/thephpleague/html-to-markdown/security/advisories/GHSA-h3wg-gqjr-jjmw), [GHSA-4xjf-2r66-5r28](https://github.com/thephpleague/html-to-markdown/security/advisories/GHSA-4xjf-2r66-5r28)). It also changes some output: non-breaking spaces are kept instead of becoming regular spaces, headings and paragraphs no longer run onto the same line as an image or other inline content before them, code blocks from `<pre>` lose a stray leading blank line, links whose text is their URL become autolinks more often, and a line of just `-` or `+` is escaped instead of becoming an empty list item. See the [upstream changelog](https://github.com/thephpleague/html-to-markdown/blob/5.2.3/CHANGELOG.md) for the full list
+* Updated `symfony/yaml` to 7.4.22, which fixes how some values are quoted and how multi-line text is written, so a few front matter values may be written differently
+* Code samples on the WordPress.org plugin page now render as code. They were shown as plain text, which turned `--category` and other flags into en dashes, so copied commands failed ([#499](https://github.com/benbalter/wordpress-static-site-exporter/pull/499))
+* A test now pins how the converter escapes Markdown, so a future converter update can't change exported output unnoticed ([#465](https://github.com/benbalter/wordpress-static-site-exporter/pull/465)). Thanks to [@theluckystrike](https://github.com/theluckystrike)
 
 = 4.4.0 =
 
