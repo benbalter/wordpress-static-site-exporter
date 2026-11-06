@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded pull request runs so only the latest commit is tested.
+# Pushes to main are never cancelled, so every merged commit keeps its result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   integration-test:
 

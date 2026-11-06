@@ -39,6 +39,9 @@
 
 // Bail without loading anything on an unsupported PHP version. wp_die() here would
 // take down the entire site (front end included) rather than just this plugin.
+// Loaded only by WordPress; refuse direct requests to this file.
+defined( 'ABSPATH' ) || exit;
+
 if ( version_compare( PHP_VERSION, '8.2', '<' ) ) {
 	add_action(
 		'admin_notices',
@@ -236,7 +239,11 @@ class Jekyll_Export {
 				'order'                  => 'ASC',
 				'ignore_sticky_posts'    => true,
 				'no_found_rows'          => true,
-				'suppress_filters'       => true,
+				// Other plugins' query filters (multilingual, membership, and
+				// visibility plugins) would otherwise drop posts from the export
+				// without a trace; the export filters below are the supported way
+				// to narrow it.
+				'suppress_filters'       => true, // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
 			)
@@ -1118,7 +1125,9 @@ class Jekyll_Export {
 		// reported as an error page rather than a zero byte download.  This runs
 		// before the buffers are torn down so the failure can still be rendered
 		// as an admin error page.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Failure is handled explicitly below.
+		// Stream the zip in chunks: WP_Filesystem has no streaming read, and
+		// get_contents() would load a multi-gigabyte archive into memory.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Failure is handled explicitly below; see above.
 		$handle = @fopen( $this->zip, 'rb' );
 		if ( false === $handle ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
@@ -1139,7 +1148,7 @@ class Jekyll_Export {
 		$sent_file = '';
 		$sent_line = 0;
 		if ( ! $this->is_cli() && headers_sent( $sent_file, $sent_line ) ) {
-			fclose( $handle );
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closes the stream opened above.
 
 			$message = sprintf(
 				'Cannot send the export because output was already sent by %1$s on line %2$d. A theme or another plugin is printing content (often a stray blank line or byte order mark) before the download starts.',
@@ -1165,11 +1174,11 @@ class Jekyll_Export {
 		// pre-flight check for large exports).
 		flush();
 		while ( ! feof( $handle ) ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary zip content; escaping would corrupt it.
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.WP.AlternativeFunctions.file_system_operations_fread -- Binary zip content streamed in chunks; escaping would corrupt it.
 			echo fread( $handle, 8192 );
 			flush();
 		}
-		fclose( $handle );
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closes the stream opened above.
 	}
 
 

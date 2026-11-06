@@ -27,6 +27,12 @@
 		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed" />
 	</rule>
 	<rule ref="WordPress-Docs" />
+
+	<!-- Flag PHP syntax and functions that don't exist on the minimum supported
+	     PHP ("Requires PHP" in jekyll-exporter.php). Keep testVersion in sync. -->
+	<config name="testVersion" value="8.2-" />
+	<rule ref="PHPCompatibilityWP" />
+
 	<rule ref="WordPress-Extra" />
 
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
