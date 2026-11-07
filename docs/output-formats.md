@@ -78,7 +78,7 @@ Unzip the export into a new Eleventy site and run `npx @11ty/eleventy`. Each pos
 
 The export also includes what Eleventy needs to build it:
 
-* `eleventy.config.mjs` copies `wp-content/` to the built site, so your uploads are published, and stops Eleventy from running Liquid over your posts, which fails on a post that quotes `{{` or `{%`. If you already have an Eleventy config, copy these two settings into it:
+* `eleventy.config.mjs` copies `wp-content/` to the built site, so your uploads are published, and stops Eleventy from running Liquid over your posts, which fails on a post that quotes a Liquid or Nunjucks tag (double curly braces, or a curly brace and percent sign). If you already have an Eleventy config, copy these two settings into it:
 
   ```js
   eleventyConfig.addPassthroughCopy("wp-content");
