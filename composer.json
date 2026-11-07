@@ -18,7 +18,8 @@
     "php-coveralls/php-coveralls": "*",
     "yoast/phpunit-polyfills": "^4.0",
     "phpstan/phpstan": "^2.0",
-    "szepeviktor/phpstan-wordpress": "^2.0"
+    "szepeviktor/phpstan-wordpress": "^2.0",
+    "phpcompatibility/phpcompatibility-wp": "^2.1"
   },
   "config": {
     "bin-dir": "bin",

@@ -39,14 +39,6 @@ add_filter( 'jekyll_export_excluded_upload_dirs', function( $excluded ) {
 } );
 ```
 
-## Performance Improvements in Version 2.4.3+
-
-Recent optimizations have significantly improved export speed:
-
-- **67% fewer database queries** when fetching posts
-- **95% fewer database queries** for author information (on sites with multiple authors)
-- **40-60% faster overall** for typical WordPress sites
-
 ## Still Having Timeout Issues?
 
 If exports are still timing out, try these solutions:
@@ -86,14 +78,6 @@ To see how long your export takes:
 ### Via WP-CLI with Timing
 ```bash
 time wp jekyll-export > export.zip
-```
-
-### Via PHP Script
-```php
-$start = microtime(true);
-// ... run export ...
-$duration = microtime(true) - $start;
-error_log("Export completed in " . round($duration, 2) . " seconds");
 ```
 
 ### Via the `jekyll_export_complete` action
@@ -144,15 +128,4 @@ If exports are still slow after optimizations:
 
 ## Getting Help
 
-If you're still experiencing performance issues:
-
-1. **Measure your baseline**: How many posts? How large is wp_uploads?
-2. **Check error logs**: Look for PHP errors or warnings
-3. **Open an issue**: [Report on GitHub](https://github.com/benbalter/wordpress-to-jekyll-exporter/issues) with details
-
-Include in your report:
-- Number of posts/pages
-- Size of uploads directory
-- PHP version and memory limit
-- Export duration or timeout details
-- Any relevant error messages
+If exports are still slow, ask in the [support forum](https://wordpress.org/support/plugin/jekyll-exporter/) (see [Support](SUPPORT.md)). Include how many posts and pages you have, the size of `wp-content/uploads`, your PHP version and memory limit, how long the export runs before it stops, and any errors from your PHP error log.

@@ -9,6 +9,9 @@
  * @link       https://github.com/benbalter/wordpress-to-jekyll-exporter/
  */
 
+// Loaded only by WordPress; refuse direct requests to this file.
+defined( 'ABSPATH' ) || exit;
+
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 
 	/**

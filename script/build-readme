@@ -113,4 +113,18 @@ output.gsub!(%r{\]\(([^):]+?\.md)\)}) do
   "](#{BLOB_URL}/#{repo_path})"
 end
 
+# WordPress.org folds every section without its own tab into Description and
+# cuts Description off after 2,500 words (Plugin Check's warning says
+# "characters", but the readme parser counts words, split on whitespace). Fail
+# here rather than ship a plugin page that ends mid-sentence.
+DESCRIPTION_WORD_LIMIT = 2500
+TABBED_SECTIONS = ["Installation", "Frequently Asked Questions", "FAQ", "Screenshots", "Changelog", "Upgrade Notice"].freeze
+description = output[/^== Description ==\n(.*?)(?=^== (?:#{TABBED_SECTIONS.map { |s| Regexp.escape(s) }.join("|")}) ==$|\z)/m, 1]
+die "no Description section in the generated readme" if description.nil?
+description_words = description.split.length
+if description_words > DESCRIPTION_WORD_LIMIT
+  die "Description is #{description_words} words; WordPress.org cuts it off at #{DESCRIPTION_WORD_LIMIT}. " \
+      "Shorten docs/README.md or a doc in SECTIONS, or leave a developer-only doc out of SECTIONS."
+end
+
 File.write("readme.txt", output)
