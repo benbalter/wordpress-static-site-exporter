@@ -52,6 +52,7 @@ if ( version_compare( PHP_VERSION, '8.2', '<' ) ) {
 	return;
 }
 
+require_once __DIR__ . '/lib/class-export-format.php';
 require_once __DIR__ . '/lib/cli.php';
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/colspan-table-converter.php';
@@ -111,6 +112,11 @@ class Jekyll_Export {
 	public $zip;
 
 	/**
+	 * Slug of the Tools page that starts an export.
+	 */
+	const ADMIN_PAGE = 'jekyll-export';
+
+	/**
 	 * Hook into WP Core
 	 */
 	public function __construct() {
@@ -148,13 +154,20 @@ class Jekyll_Export {
 
 		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'jekyll_export' ) ) {
 			wp_die(
-				esc_html__( 'This export link has expired. Reload the page, then choose Export to Jekyll from the Tools menu again.', 'jekyll-exporter' ),
+				esc_html__( 'This export link has expired. Reload the page, then choose Export to Static Site from the Tools menu again.', 'jekyll-exporter' ),
 				esc_html__( 'Export link expired', 'jekyll-exporter' ),
 				array(
 					'response'  => 403,
 					'back_link' => true,
 				)
 			);
+		}
+
+		if ( isset( $_GET['format'] ) ) {
+			$format = sanitize_key( wp_unslash( $_GET['format'] ) );
+			if ( ! $this->set_format( $format ) ) {
+				$this->die_unknown_format( $format );
+			}
 		}
 
 		$this->export();
@@ -164,9 +177,139 @@ class Jekyll_Export {
 
 	/**
 	 * Add menu option to tools list
+	 *
+	 * The menu opens a screen where you pick the format, rather than linking
+	 * straight to the download, so the nonce is minted when you click Export,
+	 * not when some earlier admin page rendered the menu.
 	 */
 	public function register_menu() {
-		add_management_page( __( 'Export to Jekyll', 'jekyll-exporter' ), __( 'Export to Jekyll', 'jekyll-exporter' ), 'manage_options', 'export.php?type=jekyll&_wpnonce=' . wp_create_nonce( 'jekyll_export' ) );
+		add_management_page( __( 'Export to Static Site', 'jekyll-exporter' ), __( 'Export to Static Site', 'jekyll-exporter' ), 'manage_options', self::ADMIN_PAGE, array( $this, 'render_admin_page' ) );
+	}
+
+	/**
+	 * Render the Tools > Export to Static Site screen: a format picker and an
+	 * Export button that submits to callback().
+	 */
+	public function render_admin_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die(
+				esc_html__( 'You need the Manage Options capability (usually an Administrator) to export this site.', 'jekyll-exporter' ),
+				esc_html__( 'Export not allowed', 'jekyll-exporter' ),
+				array( 'response' => 403 )
+			);
+		}
+
+		$selected = (string) apply_filters( 'jekyll_export_format', Jekyll_Export_Format::DEFAULT_SLUG );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Export to Static Site', 'jekyll-exporter' ); ?></h1>
+			<p><?php esc_html_e( 'Download your posts, pages, and uploads as a zip of Markdown files with YAML front matter, laid out for the static site generator you choose.', 'jekyll-exporter' ); ?></p>
+			<form method="get" action="<?php echo esc_url( admin_url( 'export.php' ) ); ?>">
+				<input type="hidden" name="type" value="jekyll" />
+				<?php wp_nonce_field( 'jekyll_export', '_wpnonce', false ); ?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="jekyll-export-format"><?php esc_html_e( 'Format', 'jekyll-exporter' ); ?></label></th>
+						<td>
+							<select name="format" id="jekyll-export-format">
+								<?php foreach ( Jekyll_Export_Format::slugs() as $slug ) : ?>
+									<?php $format = Jekyll_Export_Format::get( $slug ); ?>
+									<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $selected, $slug ); ?>><?php echo esc_html( $format ? $format->label : $slug ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description">
+								<?php
+								echo wp_kses_post(
+									sprintf(
+										/* translators: %s: link to the output formats documentation */
+										esc_html__( 'Jekyll is the default. %s explains where each format puts your content.', 'jekyll-exporter' ),
+										'<a href="' . esc_url( 'https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/output-formats.md' ) . '">' . esc_html__( 'Output formats', 'jekyll-exporter' ) . '</a>'
+									)
+								);
+								?>
+							</p>
+						</td>
+					</tr>
+				</table>
+				<?php submit_button( __( 'Export', 'jekyll-exporter' ), 'primary', '' ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Use the given format for exports in this request.
+	 *
+	 * Shared by the admin screen and `wp jekyll-export --format`.
+	 *
+	 * @param string $slug The format's slug.
+	 * @return bool False if no format has that slug.
+	 */
+	public function set_format( $slug ) {
+		$slug = (string) $slug;
+		if ( null === Jekyll_Export_Format::get( $slug ) ) {
+			return false;
+		}
+
+		add_filter(
+			'jekyll_export_format',
+			function () use ( $slug ) {
+				return $slug;
+			}
+		);
+
+		return true;
+	}
+
+	/**
+	 * The format this export is written in, from the `jekyll_export_format`
+	 * filter.
+	 *
+	 * Looked up on every call rather than cached, since the filter can change
+	 * between exports in the same request (WP-CLI scripts, tests).
+	 *
+	 * @return Jekyll_Export_Format
+	 */
+	public function get_format() {
+		/**
+		 * Filters the export's output format.
+		 *
+		 * @param string $slug A slug registered with `jekyll_export_formats`:
+		 *                     jekyll (default), hugo, astro, or eleventy.
+		 */
+		$slug   = (string) apply_filters( 'jekyll_export_format', Jekyll_Export_Format::DEFAULT_SLUG );
+		$format = Jekyll_Export_Format::get( $slug );
+
+		if ( null === $format ) {
+			$this->die_unknown_format( $slug );
+		}
+
+		return $format;
+	}
+
+	/**
+	 * Stop with a message naming the formats that do exist, rather than
+	 * silently exporting something the user didn't ask for.
+	 *
+	 * @param string $slug The unknown slug.
+	 * @return never
+	 */
+	protected function die_unknown_format( $slug ) {
+		wp_die(
+			esc_html(
+				sprintf(
+					/* translators: 1: requested format, 2: comma-separated list of available formats */
+					__( 'Unknown export format "%1$s". Choose one of: %2$s.', 'jekyll-exporter' ),
+					$slug,
+					implode( ', ', Jekyll_Export_Format::slugs() )
+				)
+			),
+			esc_html__( 'Static Site Exporter', 'jekyll-exporter' ),
+			array(
+				'response'  => 400,
+				'back_link' => true,
+			)
+		);
 	}
 
 	/**
@@ -175,7 +318,7 @@ class Jekyll_Export {
 	 */
 	public function display_environment_notice() {
 		$screen = get_current_screen();
-		if ( ! $screen || 'export' !== $screen->id ) {
+		if ( ! $screen || ! in_array( $screen->id, array( 'export', 'tools_page_' . self::ADMIN_PAGE ), true ) ) {
 			return;
 		}
 
@@ -189,7 +332,7 @@ class Jekyll_Export {
 		}
 
 		echo '<div class="notice notice-error"><p>';
-		echo '<strong>' . esc_html__( 'Jekyll Export:', 'jekyll-exporter' ) . '</strong> ';
+		echo '<strong>' . esc_html__( 'Static Site Exporter:', 'jekyll-exporter' ) . '</strong> ';
 		echo wp_kses_post( implode( '<br>', $validation->get_error_messages() ) );
 		echo '</p></div>';
 	}
@@ -279,6 +422,16 @@ class Jekyll_Export {
 		// Preserve exact permalink, since Jekyll doesn't support redirection.
 		if ( 'page' !== $post->post_type ) {
 			$output['permalink'] = $this->make_url_relative( get_permalink( $post ) );
+
+			// WordPress gives a scheduled post a plain /?p=123 link until it
+			// publishes. Formats that can't publish at a query string URL get
+			// the address the post will have instead; Jekyll's output is
+			// left exactly as it was.
+			if ( 'future' === $post->post_status && ! $this->get_format()->query_permalinks ) {
+				$scheduled              = clone $post;
+				$scheduled->post_status = 'publish';
+				$output['permalink']    = $this->make_url_relative( get_permalink( $scheduled ) );
+			}
 		}
 
 		// Reserved front matter keys set above; a public custom field of the same name will
@@ -309,6 +462,8 @@ class Jekyll_Export {
 				$output['image'] = $this->make_url_relative( $post_thumbnail_src[0] );
 			}
 		}
+
+		$output = $this->get_format()->map_front_matter( $output, $post );
 
 		$output = apply_filters( 'jekyll_export_meta', $output, $post );
 		return $output;
@@ -720,10 +875,14 @@ class Jekyll_Export {
 		$this->dir = trailingslashit( $temp_dir . 'wp-jekyll-' . $suffix );
 		$this->zip = $temp_dir . 'wp-jekyll-' . $suffix . '.zip';
 
+		$format = $this->get_format();
+
 		$wp_filesystem->mkdir( $this->dir );
-		$wp_filesystem->mkdir( $this->dir . '_posts/' );
-		$wp_filesystem->mkdir( $this->dir . '_drafts/' );
-		$wp_filesystem->mkdir( $this->dir . 'wp-content/' );
+		wp_mkdir_p( $this->dir . $format->posts_dir );
+		if ( '' !== $format->drafts_dir ) {
+			wp_mkdir_p( $this->dir . $format->drafts_dir );
+		}
+		wp_mkdir_p( $this->dir . $format->uploads_dir . 'wp-content/' );
 	}
 
 	/**
@@ -773,11 +932,14 @@ class Jekyll_Export {
 	 *                                 omitted, the archive is streamed as a download.
 	 */
 	public function export( $destination = null ) {
+		// Fail on an unknown format before doing any work.
+		$this->get_format();
+
 		$validation = $this->validate_environment();
 		if ( is_wp_error( $validation ) ) {
 			wp_die(
 				wp_kses_post( implode( '<br>', $validation->get_error_messages() ) ),
-				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				esc_html__( 'Static Site Exporter', 'jekyll-exporter' ),
 				array( 'back_link' => true )
 			);
 		}
@@ -835,8 +997,8 @@ class Jekyll_Export {
 
 			wp_die(
 				/* translators: %s: error message from the exception */
-				wp_kses_post( sprintf( __( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $e->getMessage() ) ) ),
-				esc_html__( 'Jekyll Export Error', 'jekyll-exporter' ),
+				wp_kses_post( sprintf( __( 'Export failed: %s', 'jekyll-exporter' ), esc_html( $e->getMessage() ) ) ),
+				esc_html__( 'Static Site Exporter', 'jekyll-exporter' ),
 				array( 'back_link' => true )
 			);
 		} finally {
@@ -868,7 +1030,7 @@ class Jekyll_Export {
 		}
 
 		/* translators: %s: error message from the fatal error */
-		return '<p>' . sprintf( esc_html__( 'Jekyll Export failed: %s', 'jekyll-exporter' ), esc_html( $details ) ) . '</p>';
+		return '<p>' . sprintf( esc_html__( 'Export failed: %s', 'jekyll-exporter' ), esc_html( $details ) ) . '</p>';
 	}
 
 	/**
@@ -881,7 +1043,7 @@ class Jekyll_Export {
 	 * @return array The filtered arguments.
 	 */
 	public function fatal_error_args( $args, $error ) {
-		$args['title']     = __( 'Jekyll Export Error', 'jekyll-exporter' );
+		$args['title']     = __( 'Static Site Exporter', 'jekyll-exporter' );
 		$args['back_link'] = true;
 		$args['response']  = 500;
 		return $args;
@@ -889,7 +1051,8 @@ class Jekyll_Export {
 
 
 	/**
-	 * Convert options table to _config.yml file
+	 * Convert site settings to the format's config file (`_config.yml` for
+	 * Jekyll)
 	 */
 	public function convert_options() {
 		global $wp_filesystem;
@@ -931,10 +1094,92 @@ class Jekyll_Export {
 			}
 		}
 
+		$format     = $this->get_format();
+		$post_types = array_map( 'strval', (array) apply_filters( 'jekyll_export_post_types', array( 'post', 'page' ) ) );
+
+		switch ( $format->config ) {
+			case 'jekyll':
+				$this->write_jekyll_config( $options, $post_types );
+				break;
+			case 'hugo':
+				$hugo = array(
+					'baseURL' => isset( $options['url'] ) ? trailingslashit( (string) $options['url'] ) : '/',
+					// Hugo 0.158 renamed `languageCode` to `locale`.
+					'locale'  => get_bloginfo( 'language' ),
+					'title'   => isset( $options['name'] ) ? $options['name'] : '',
+				);
+				if ( isset( $options['description'] ) && '' !== $options['description'] ) {
+					$hugo['params'] = array( 'description' => $options['description'] );
+				}
+				$wp_filesystem->put_contents( $this->dir . 'hugo.yaml', Yaml::dump( $hugo ) );
+				break;
+			case 'astro':
+				wp_mkdir_p( $this->dir . 'src/' );
+				$wp_filesystem->put_contents( $this->dir . 'src/content.config.ts', $this->astro_content_config( $format, $post_types ) );
+				break;
+			case 'eleventy':
+				$site = array(
+					'title'       => isset( $options['name'] ) ? $options['name'] : '',
+					'description' => isset( $options['description'] ) ? $options['description'] : '',
+					'url'         => isset( $options['url'] ) ? $options['url'] : '',
+				);
+				wp_mkdir_p( $this->dir . '_data/' );
+				$wp_filesystem->put_contents( $this->dir . '_data/site.json', wp_json_encode( $site, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" );
+				$this->write_eleventy_scaffold( $post_types );
+				break;
+		}
+	}
+
+	/**
+	 * Write the two things an Eleventy build needs before it can build the
+	 * export: a config, and a layout for each `layout:` the posts name.
+	 *
+	 * Eleventy stops with an error on a layout it can't find, doesn't copy
+	 * uploads unless told to, and runs Markdown through Liquid, which breaks
+	 * on any post that quotes `{{` or `{%`.
+	 *
+	 * @param string[] $post_types The exported post types.
+	 */
+	protected function write_eleventy_scaffold( $post_types ) {
+		global $wp_filesystem;
+
+		$config = <<<'JS'
+// Generated by Static Site Exporter.
+export default function (eleventyConfig) {
+	// Serve images and other uploads at the same /wp-content/uploads/ URLs.
+	eleventyConfig.addPassthroughCopy("wp-content");
+}
+
+export const config = {
+	// WordPress content isn't a template, so don't run Liquid over it.
+	markdownTemplateEngine: false,
+};
+
+JS;
+		$wp_filesystem->put_contents( $this->dir . 'eleventy.config.mjs', $config );
+
+		wp_mkdir_p( $this->dir . '_includes/' );
+		foreach ( array_unique( array_merge( array( 'post', 'page' ), $post_types ) ) as $post_type ) {
+			$wp_filesystem->put_contents(
+				$this->dir . '_includes/' . sanitize_file_name( $post_type . '.njk' ),
+				'{# Generated by Static Site Exporter: the layout for `layout: ' . $post_type . "`. Replace it with your own. #}\n{{ content | safe }}\n"
+			);
+		}
+	}
+
+	/**
+	 * Write Jekyll's `_config.yml`.
+	 *
+	 * @param array    $options    The site settings, keyed by Jekyll's names.
+	 * @param string[] $post_types The exported post types.
+	 */
+	protected function write_jekyll_config( $options, $post_types ) {
+		global $wp_filesystem;
+
 		// Posts of other types are written to `_<type>s/` (see write()), which
 		// Jekyll ignores unless it's declared as a collection, so declare them.
 		$collections = array();
-		foreach ( (array) apply_filters( 'jekyll_export_post_types', array( 'post', 'page' ) ) as $post_type ) {
+		foreach ( $post_types as $post_type ) {
 			if ( in_array( $post_type, array( 'post', 'page' ), true ) ) {
 				continue;
 			}
@@ -949,6 +1194,58 @@ class Jekyll_Export {
 		$wp_filesystem->put_contents( $this->dir . '_config.yml', $output );
 	}
 
+	/**
+	 * Astro's `src/content.config.ts`, declaring a content collection for
+	 * posts, pages, and each other exported post type.
+	 *
+	 * The schema only types the keys the exporter always writes and lets
+	 * everything else (custom fields, taxonomies) through, so the first build
+	 * works without editing it.
+	 *
+	 * @param Jekyll_Export_Format $format     The Astro format.
+	 * @param string[]             $post_types The exported post types.
+	 * @return string The file's contents.
+	 */
+	protected function astro_content_config( $format, $post_types ) {
+		$collections = array_merge(
+			array(
+				'posts' => untrailingslashit( $format->posts_dir ),
+				'pages' => untrailingslashit( $format->pages_dir ),
+			),
+			$format->collection_dirs( $post_types )
+		);
+
+		$lines = array();
+		foreach ( $collections as $name => $dir ) {
+			$lines[] = sprintf(
+				"\t%s: defineCollection({ loader: glob({ pattern: '**/*.md', base: %s }), schema }),",
+				wp_json_encode( (string) $name, JSON_UNESCAPED_SLASHES ),
+				wp_json_encode( './' . $dir, JSON_UNESCAPED_SLASHES )
+			);
+		}
+
+		return <<<'TS'
+// Generated by Static Site Exporter. Declares a collection for each folder
+// under src/content/, with a schema that accepts any front matter.
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
+
+const schema = z
+	.object({
+		title: z.string().optional(),
+		date: z.coerce.date().optional(),
+		draft: z.boolean().optional(),
+		permalink: z.string().optional(),
+	})
+	.passthrough();
+
+export const collections = {
+
+TS
+		. implode( "\n", $lines ) . "\n};\n";
+	}
+
 
 	/**
 	 * Write file to temp dir
@@ -960,9 +1257,12 @@ class Jekyll_Export {
 
 		global $wp_filesystem;
 
-		if ( ! in_array( get_post_status( $post ), array( 'publish', 'future' ), true ) ) {
+		$format    = $this->get_format();
+		$post_type = (string) get_post_type( $post );
+
+		if ( ! Jekyll_Export_Format::is_published( $post ) ) {
 			// Drafts often have no slug and sometimes no title; join whichever exist.
-			$name     = implode(
+			$name = implode(
 				'-',
 				array_filter(
 					array( $this->filename_slug( get_page_uri( $post->ID ) ), get_the_title( $post->ID ) ),
@@ -971,8 +1271,11 @@ class Jekyll_Export {
 					}
 				)
 			);
-			$filename = '_drafts/' . sanitize_file_name( ( '' === $name ? 'draft-' . $post->ID : $name ) . '.md' );
-		} elseif ( get_post_type( $post ) === 'page' ) {
+			// Formats without a drafts folder keep drafts next to their
+			// published siblings and mark them in the front matter instead.
+			$dir      = '' !== $format->drafts_dir ? $format->drafts_dir : $format->dir_for( $post_type );
+			$filename = $dir . sanitize_file_name( ( '' === $name ? 'draft-' . $post->ID : $name ) . '.md' );
+		} elseif ( 'page' === $post_type ) {
 			// Sanitize each path segment independently so the directory hierarchy is
 			// preserved while individual segments cannot contain traversal sequences.
 			$segments = array_map(
@@ -981,10 +1284,11 @@ class Jekyll_Export {
 				},
 				explode( '/', get_page_uri( $post->ID ) )
 			);
-			$filename = implode( '/', $segments ) . '.md';
+			$filename = $format->pages_dir . implode( '/', $segments ) . '.md';
 		} else {
 			$slug     = sanitize_file_name( $this->filename_slug( $post->post_name ) );
-			$filename = '_' . get_post_type( $post ) . 's/' . mysql2date( 'Y-m-d', $post->post_date, false ) . '-' . ( '' === $slug ? (string) $post->ID : $slug ) . '.md';
+			$prefix   = $format->date_prefix ? mysql2date( 'Y-m-d', $post->post_date, false ) . '-' : '';
+			$filename = $format->dir_for( $post_type ) . $prefix . ( '' === $slug ? (string) $post->ID : $slug ) . '.md';
 		}
 
 		// Two posts can map to the same file (the same slug on the same day, or
@@ -1220,7 +1524,7 @@ class Jekyll_Export {
 
 		// Send headers.
 		@header( 'Content-Type: application/zip' );
-		@header( 'Content-Disposition: attachment; filename=jekyll-export.zip' );
+		@header( 'Content-Disposition: attachment; filename=' . sanitize_file_name( $this->get_format()->slug . '-export.zip' ) );
 		if ( false !== $size ) {
 			@header( 'Content-Length: ' . $size );
 		}
@@ -1299,7 +1603,7 @@ class Jekyll_Export {
 
 		$site_url = trailingslashit( set_url_scheme( get_site_url(), 'http' ) );
 		$base_url = set_url_scheme( $upload_dir['baseurl'], 'http' );
-		$dest     = $this->dir . str_replace( $site_url, '', $base_url );
+		$dest     = $this->dir . $this->get_format()->uploads_dir . str_replace( $site_url, '', $base_url );
 		$this->copy_recursive( $source, $dest );
 	}
 
