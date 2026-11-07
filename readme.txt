@@ -4,7 +4,7 @@ Tags: jekyll, hugo, markdown, static site, export
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 4.5.0
+Stable tag: 4.6.0
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 GitHub Plugin URI: benbalter/wordpress-static-site-exporter
@@ -95,6 +95,17 @@ Yes. Each post is exported in full, including everything after a More tag (the "
 3. Each post is Markdown with YAML front matter: title, date, author, categories, tags, and its original URL.
 
 == Changelog ==
+
+= 4.6.0 =
+
+This release exports for Hugo, Astro, and Eleventy as well as Jekyll, and exports posts in full again. Review the note marked **Export change** before re-exporting a site you've exported before.
+
+* Export for Hugo, Astro, or Eleventy, not just Jekyll. Pick a format on **Tools → Export to Static Site**, or pass `--format` to `wp jekyll-export`. Each format gets that generator's folders, draft markers, and config file, and the Eleventy export includes a config and stub layouts so it builds as is. Jekyll exports are unchanged. Plugins can add or adjust formats with the `jekyll_export_formats` filter. See [Output formats](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/output-formats.md) ([#507](https://github.com/benbalter/wordpress-static-site-exporter/pull/507))
+* The Tools menu item is now **Export to Static Site** instead of "Export to Jekyll", and it opens a short screen with the format choice instead of starting the download right away. Hook names, the `wp jekyll-export` command, and the text domain are unchanged, so scripts and links keep working ([#505](https://github.com/benbalter/wordpress-static-site-exporter/pull/505), [#507](https://github.com/benbalter/wordpress-static-site-exporter/pull/507))
+* The plugin page and README now lead with the one-click export, and WP-CLI, selective export, and large-site tips moved to a new [Advanced usage](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/advanced-usage.md) page. The WP-CLI success message can now be translated ([#505](https://github.com/benbalter/wordpress-static-site-exporter/pull/505))
+* **Export change:** Posts with a More tag (the "Continue reading" break) are exported in full again. Since 2.4.2, the export stopped at the tag and put a "(more…)" link in place of the rest of the post, and posts split with Page Break blocks lost every page after the first. The More tag is kept in the Markdown as `<!--more-->` on its own line, which Hugo uses to end a post's summary and Jekyll can use as its excerpt separator ([#509](https://github.com/benbalter/wordpress-static-site-exporter/issues/509), [#510](https://github.com/benbalter/wordpress-static-site-exporter/pull/510)). Thanks to [@shtrom](https://github.com/shtrom) for the report
+* The readme build now fails if the WordPress.org description goes over 2,500 words, where WordPress.org cuts it off. Repeated and outdated sections had pushed it past that ([#511](https://github.com/benbalter/wordpress-static-site-exporter/pull/511))
+* The plugin now ships its `composer.json`, so WordPress.org reviewers can see which libraries are bundled in `vendor/` ([#511](https://github.com/benbalter/wordpress-static-site-exporter/pull/511))
 
 = 4.5.0 =
 
@@ -203,6 +214,10 @@ This release changes what some exports contain. Review the notes marked **Export
 [View Past Releases](https://github.com/benbalter/wordpress-to-jekyll-exporter/releases)
 
 == Upgrade Notice ==
+
+= 4.6.0 =
+
+Adds Hugo, Astro, and Eleventy exports. Posts with a More tag or Page Breaks are exported in full again; since 2.4.2, the export stopped at the first break, so re-export to get the rest of those posts.
 
 = 4.5.0 =
 
