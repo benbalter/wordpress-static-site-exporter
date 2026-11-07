@@ -1948,9 +1948,18 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 	function test_convert_content_keeps_more_marker() {
 		$content = $this->convert_post_content( '<p>Intro text.</p><!--more Read on--><p>Rest of the article.</p>' );
 
-		$this->assertSame( 1, substr_count( $content, '<!--more-->' ) );
-		$this->assertLessThan( strpos( $content, 'Rest of the article.' ), strpos( $content, '<!--more-->' ) );
-		$this->assertGreaterThan( strpos( $content, 'Intro text.' ), strpos( $content, '<!--more-->' ) );
+		// On its own line, so CommonMark doesn't read the next paragraph as raw HTML.
+		$this->assertSame( "Intro text.\n\n<!--more-->\n\nRest of the article.", $content );
+	}
+
+	/**
+	 * Test that the more marker isn't escaped or run into text in classic editor
+	 * content without paragraph tags.
+	 */
+	function test_convert_content_more_marker_after_inline_text() {
+		$content = $this->convert_post_content( "Intro line\n<!--more-->\nRest of the article." );
+
+		$this->assertSame( "Intro line\n\n<!--more-->\n\nRest of the article.", $content );
 	}
 
 	/**

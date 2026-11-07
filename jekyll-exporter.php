@@ -533,6 +533,7 @@ class Jekyll_Export {
 			return $this->html_fallback( $html, $post );
 		}
 
+		$markdown = $this->isolate_more_marker( $markdown, $html );
 		$markdown = apply_filters( 'jekyll_export_markdown', $markdown, $post );
 		$markdown = apply_filters( 'jekyll_export_content', $markdown, $post );
 		return $markdown;
@@ -562,6 +563,26 @@ class Jekyll_Export {
 		// static site generators look for. The Markdown converter keeps it and
 		// drops other comments, including <!--nextpage--> and block delimiters.
 		return (string) preg_replace( '/<!--more(.*?)?-->/', '<!--more-->', $post->post_content );
+	}
+
+	/**
+	 * Put the preserved <!--more--> marker on a line of its own.
+	 *
+	 * The converter emits the comment inline, so the next paragraph starts on the
+	 * marker's line (and, after inline text, it escapes the `<` as `\<`).
+	 * CommonMark renderers read a line starting with `<!--` as a raw HTML block,
+	 * which would swallow that paragraph's Markdown.
+	 *
+	 * @param string $markdown the converted Markdown.
+	 * @param string $html the HTML it was converted from.
+	 * @return string the Markdown with the marker separated by blank lines
+	 */
+	private function isolate_more_marker( $markdown, $html ) {
+		if ( false === strpos( $html, '<!--more-->' ) ) {
+			return $markdown;
+		}
+
+		return trim( (string) preg_replace( '/\s*\\\\?<!--more-->\s*/', "\n\n<!--more-->\n\n", $markdown, 1 ) );
 	}
 
 	/**
