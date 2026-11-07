@@ -486,6 +486,7 @@ class Jekyll_Export {
 
 			if ( $wpcom_markdown_instance && $wpcom_markdown_instance->is_posting_enabled() ) {
 				// jetpack markdown is available so just return it.
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's edit_{$field} filter, which Jetpack hooks to turn the stored HTML back into Markdown.
 				$content = apply_filters( 'edit_post_content', $post->post_content, $post->ID );
 				// Localize URLs in Jetpack markdown content.
 				$content = $this->localize_urls_in_text( $content );
@@ -782,7 +783,7 @@ class Jekyll_Export {
 		}
 
 		// Disable PHP time limit to prevent timeout during large exports.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Silenced because set_time_limit may be disabled on some hosts.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,Squiz.PHP.DiscouragedFunctions.Discouraged -- Large exports need more than the default time limit; silenced because set_time_limit may be disabled on some hosts.
 		@set_time_limit( 0 );
 
 		// Attempt to increase memory limit for large exports.
@@ -1173,7 +1174,7 @@ class Jekyll_Export {
 		// bytes actually written, which browsers report as a truncated download.
 		// Disabled first, so the buffer it installs is gone before the teardown
 		// below counts what is still open.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.IniSet.Risky -- Deliberate: transparent compression corrupts the download, and ini_set may be disabled on some hosts.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.IniSet.Risky,Squiz.PHP.DiscouragedFunctions.Discouraged -- Deliberate: transparent compression corrupts the download, and ini_set may be disabled on some hosts.
 		@ini_set( 'zlib.output_compression', 'Off' );
 
 		// Open the file before sending any headers so a read failure can still be

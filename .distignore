@@ -1,6 +1,7 @@
 # Files excluded from the WordPress.org release (read by 10up/action-wordpress-plugin-deploy).
 # Only the plugin runtime ships: jekyll-exporter.php, jekyll-export-cli.php, lib/, vendor/,
-# readme.txt, and LICENSE.txt.
+# readme.txt, and LICENSE.txt, plus composer.json, which WordPress.org's Plugin Check
+# expects alongside a Composer vendor/ directory so reviewers can see its dependencies.
 /.git
 /.github
 /.claude
@@ -13,7 +14,6 @@
 /.gitignore
 /bin
 /coverage.xml
-/composer.json
 /composer.lock
 /crowdin.yml
 /docker-compose.yml
