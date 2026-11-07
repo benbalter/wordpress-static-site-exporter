@@ -320,19 +320,9 @@ If you want to remove empty or falsy values from the frontmatter (similar to the
 
 == Command-line Usage ==
 
-If you're having trouble with your web server timing out before the export is complete, or if you just like terminal better, you may enjoy the command-line tool.
-
-It works just like the plugin, but produces the zipfile on STDOUT:
-
-    php jekyll-export-cli.php > jekyll-export.zip
-
-If using this method, you must run first `cd` into the wordpress-to-jekyll-exporter directory.
-
-Alternatively, if you have [WP-CLI](http://wp-cli.org) installed, you can run:
+If your web server times out before the export finishes, or you'd rather use the terminal, run the export with [WP-CLI](https://wp-cli.org). It works just like the plugin, but writes the zip file to STDOUT, and it copes better with unusual setups, such as a `wp-content` folder in an unusual location:
 
     wp jekyll-export > export.zip
-
-The WP-CLI version will provide greater compatibility for alternate WordPress environments, such as when `wp-content` isn't in the usual location.
 
 To write the zip straight to a file instead of STDOUT, pass `--output`. This keeps a stray PHP notice or warning from ending up inside the archive:
 
@@ -346,44 +336,7 @@ If your media is served from a CDN, or the uploads folder is too big to zip, pas
 
     wp jekyll-export --skip-uploads > export.zip
 
-== Filtering by Category or Tag ==
-
-You can export only specific categories or tags using the WP-CLI command. This is useful when you want to convert just one section of your WordPress site instead of the entire corpus.
-
-= Export posts from a specific category: =
-
-    wp jekyll-export --category=technology > export.zip
-
-= Export posts from multiple categories: =
-
-    wp jekyll-export --category=tech,news,updates > export.zip
-
-= Export posts with a specific tag: =
-
-    wp jekyll-export --tag=featured > export.zip
-
-= Export only pages (or specific post types): =
-
-    wp jekyll-export --post_type=page > export.zip
-
-= Combine filters: =
-
-    wp jekyll-export --category=technology --tag=featured --post_type=post > export.zip
-
-== Using Filters in PHP ==
-
-If you're using the plugin via PHP code or want more control, you can use the `jekyll_export_taxonomy_filters` filter:
-
-    add_filter( 'jekyll_export_taxonomy_filters', function() {
-        return array(
-            'category' => array( 'technology', 'science' ),
-            'post_tag' => array( 'featured' ),
-        );
-    } );
-
-    // Then trigger the export
-    global $jekyll_export;
-    $jekyll_export->export();
+To export only some categories, tags, or post types, see [Selective Export](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/selective-export.md).
 
 === Performance Tips for Large Sites ===
 
@@ -420,14 +373,6 @@ Many sites accumulate cache files and temporary uploads that aren't needed in th
         ) );
     } );
 
-== Performance Improvements in Version 2.4.3+ ==
-
-Recent optimizations have significantly improved export speed:
-
-- **67% fewer database queries** when fetching posts
-- **95% fewer database queries** for author information (on sites with multiple authors)
-- **40-60% faster overall** for typical WordPress sites
-
 == Still Having Timeout Issues? ==
 
 If exports are still timing out, try these solutions:
@@ -461,13 +406,6 @@ To see how long your export takes:
 = Via WP-CLI with Timing =
 
     time wp jekyll-export > export.zip
-
-= Via PHP Script =
-
-    $start = microtime(true);
-    // ... run export ...
-    $duration = microtime(true) - $start;
-    error_log("Export completed in " . round($duration, 2) . " seconds");
 
 = Via the `jekyll_export_complete` action =
 
@@ -513,18 +451,7 @@ If exports are still slow after optimizations:
 
 == Getting Help ==
 
-If you're still experiencing performance issues:
-
-1. **Measure your baseline**: How many posts? How large is wp_uploads?
-2. **Check error logs**: Look for PHP errors or warnings
-3. **Open an issue**: [Report on GitHub](https://github.com/benbalter/wordpress-to-jekyll-exporter/issues) with details
-
-Include in your report:
-- Number of posts/pages
-- Size of uploads directory
-- PHP version and memory limit
-- Export duration or timeout details
-- Any relevant error messages
+If exports are still slow, ask in the [support forum](https://wordpress.org/support/plugin/jekyll-exporter/) (see [Support](https://github.com/benbalter/wordpress-static-site-exporter/blob/main/docs/SUPPORT.md)). Include how many posts and pages you have, the size of `wp-content/uploads`, your PHP version and memory limit, how long the export runs before it stops, and any errors from your PHP error log.
 
 == Where to get help or report an issue ==
 
