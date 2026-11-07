@@ -1,5 +1,13 @@
 ## Changelog
 
+### 4.6.0
+
+This release exports posts in full. Review the note marked **Export change** before re-exporting a site you've exported before.
+
+* **Export change:** Posts with a More tag (the "Continue reading" break) are exported in full again. Since 2.4.2, the export stopped at the tag and put a "(more…)" link in place of the rest of the post, and posts split with Page Break blocks lost every page after the first. The More tag is kept in the Markdown as `<!--more-->` on its own line, which Hugo uses to end a post's summary and Jekyll can use as its excerpt separator ([#509](https://github.com/benbalter/wordpress-static-site-exporter/issues/509), [#510](https://github.com/benbalter/wordpress-static-site-exporter/pull/510)). Thanks to [@shtrom](https://github.com/shtrom) for the report
+* The plugin's WordPress.org page now shows all of its documentation. WordPress.org cuts the description off after 2,500 words, and repeated and outdated sections had pushed it past that. The readme build now fails before the description gets too long again ([#511](https://github.com/benbalter/wordpress-static-site-exporter/pull/511))
+* The plugin now ships its `composer.json`, so WordPress.org reviewers can see which libraries are bundled in `vendor/` ([#511](https://github.com/benbalter/wordpress-static-site-exporter/pull/511))
+
 ### 4.5.0
 
 This release fixes a bug in 4.4.0 that exported every post as HTML instead of Markdown, and updates the HTML-to-Markdown converter for two security fixes, which also change some converted Markdown. Review the notes marked **Export change** before re-exporting a site you've exported before.
