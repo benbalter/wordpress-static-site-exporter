@@ -2,7 +2,7 @@
 
 ### 4.6.0
 
-Posts with a More tag or Page Breaks are exported in full again. Since 2.4.2, the export stopped at the first break. Re-export to get the rest of those posts.
+Adds Hugo, Astro, and Eleventy exports. Posts with a More tag or Page Breaks are exported in full again; since 2.4.2, the export stopped at the first break, so re-export to get the rest of those posts.
 
 ### 4.5.0
 
