@@ -1870,4 +1870,111 @@ class WordPressToJekyllExporterTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '&quot;hi&quot;', $content );
 		$this->assertStringNotContainsString( '"hi"', $content );
 	}
+
+
+	/**
+	 * Insert a published post with the given content and return its converted Markdown.
+	 *
+	 * @param string $post_content the raw post content.
+	 * @param array  $args extra wp_insert_post() arguments.
+	 * @return string the converted content
+	 */
+	private function convert_post_content( $post_content, $args = array() ) {
+		global $jekyll_export;
+
+		$post_id = wp_insert_post(
+			array_merge(
+				array(
+					'post_title'   => 'Content break test',
+					'post_content' => $post_content,
+					'post_status'  => 'publish',
+					'post_author'  => self::$author_id,
+				),
+				$args
+			)
+		);
+
+		return $jekyll_export->convert_content( get_post( $post_id ) );
+	}
+
+	/**
+	 * Assert that converted content has no "Continue reading" style more link.
+	 *
+	 * @param string $content the converted content.
+	 */
+	private function assertNoMoreLink( $content ) {
+		$this->assertStringNotContainsString( '#more-', $content );
+		$this->assertStringNotContainsString( 'more-link', $content );
+		$this->assertStringNotContainsString( 'Continue reading', $content );
+		$this->assertStringNotContainsString( '(more', $content );
+	}
+
+	/**
+	 * Test that the full post is exported when it contains a classic <!--more--> tag.
+	 *
+	 * @see https://github.com/benbalter/wordpress-static-site-exporter/issues/509
+	 */
+	function test_convert_content_includes_text_after_more_tag() {
+		$content = $this->convert_post_content( '<p>Intro text.</p><!--more--><p>Rest of the article.</p>' );
+
+		$this->assertStringContainsString( 'Intro text.', $content );
+		$this->assertStringContainsString( 'Rest of the article.', $content );
+		$this->assertNoMoreLink( $content );
+	}
+
+	/**
+	 * Test that the full post is exported when it contains a block editor More block.
+	 *
+	 * @see https://github.com/benbalter/wordpress-static-site-exporter/issues/509
+	 */
+	function test_convert_content_includes_text_after_more_block() {
+		$html  = "<!-- wp:paragraph -->\n<p>Intro text.</p>\n<!-- /wp:paragraph -->\n\n";
+		$html .= "<!-- wp:more {\"customText\":\"Keep going\"} -->\n<!--more Keep going-->\n<!-- /wp:more -->\n\n";
+		$html .= "<!-- wp:paragraph -->\n<p>Rest of the article.</p>\n<!-- /wp:paragraph -->";
+
+		$content = $this->convert_post_content( $html );
+
+		$this->assertStringContainsString( 'Intro text.', $content );
+		$this->assertStringContainsString( 'Rest of the article.', $content );
+		$this->assertStringNotContainsString( 'Keep going', $content );
+		$this->assertStringNotContainsString( 'wp:more', $content );
+		$this->assertNoMoreLink( $content );
+	}
+
+	/**
+	 * Test that the more tag survives as <!--more--> so static site generators
+	 * (Hugo's summary divider, Jekyll's excerpt_separator) can keep using it.
+	 */
+	function test_convert_content_keeps_more_marker() {
+		$content = $this->convert_post_content( '<p>Intro text.</p><!--more Read on--><p>Rest of the article.</p>' );
+
+		$this->assertSame( 1, substr_count( $content, '<!--more-->' ) );
+		$this->assertLessThan( strpos( $content, 'Rest of the article.' ), strpos( $content, '<!--more-->' ) );
+		$this->assertGreaterThan( strpos( $content, 'Intro text.' ), strpos( $content, '<!--more-->' ) );
+	}
+
+	/**
+	 * Test that every page of a post split with <!--nextpage--> is exported.
+	 */
+	function test_convert_content_includes_all_pages() {
+		$content = $this->convert_post_content( '<p>Page one.</p><!--nextpage--><p>Page two.</p><!--nextpage--><p>Page three.</p>' );
+
+		$this->assertStringContainsString( 'Page one.', $content );
+		$this->assertStringContainsString( 'Page two.', $content );
+		$this->assertStringContainsString( 'Page three.', $content );
+		$this->assertStringNotContainsString( 'nextpage', $content );
+	}
+
+	/**
+	 * Test that a password-protected post's body still isn't written to the export.
+	 */
+	function test_convert_content_password_protected_post_omits_body() {
+		$content = $this->convert_post_content(
+			'<p>Secret intro.</p><!--more--><p>Secret rest.</p>',
+			array( 'post_password' => 'hunter2' )
+		);
+
+		$this->assertStringNotContainsString( 'Secret intro.', $content );
+		$this->assertStringNotContainsString( 'Secret rest.', $content );
+	}
 }

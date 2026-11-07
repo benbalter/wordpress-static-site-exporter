@@ -494,14 +494,22 @@ class Jekyll_Export {
 			}
 		}
 
-		$html = get_the_content( null, false, $post );
+		$html = $this->get_full_content( $post );
 		// Localize URLs before converting to Markdown.
 		$content = $this->localize_urls( $html );
 
 		// Reuse converter instance to avoid recreating it for each post.
 		static $default_converter = null;
 		if ( null === $default_converter ) {
-			$converter_options = apply_filters( 'jekyll_export_markdown_converter_options', array( 'header_style' => 'atx' ) );
+			$converter_options = apply_filters(
+				'jekyll_export_markdown_converter_options',
+				array(
+					'header_style'      => 'atx',
+					// Keep the More tag so Hugo (summary divider) and Jekyll
+					// (excerpt_separator) can still split the excerpt there.
+					'preserve_comments' => array( 'more' ),
+				)
+			);
 			$default_converter = new HtmlConverter( $converter_options );
 			$default_converter->getEnvironment()->addConverter( new ColspanTableConverter() );
 		}
@@ -528,6 +536,32 @@ class Jekyll_Export {
 		$markdown = apply_filters( 'jekyll_export_markdown', $markdown, $post );
 		$markdown = apply_filters( 'jekyll_export_content', $markdown, $post );
 		return $markdown;
+	}
+
+	/**
+	 * Get a post's complete HTML content, for every page and past the More tag.
+	 *
+	 * Don't use get_the_content() here: given a post, it decides whether to show
+	 * the full text from the current request, and an export never looks like a
+	 * single-post view, so it cuts the post at <!--more--> (adding a "Continue
+	 * reading" link) and returns only the first <!--nextpage--> page.
+	 *
+	 * @see https://github.com/benbalter/wordpress-static-site-exporter/issues/509
+	 *
+	 * @param WP_Post $post the post being exported.
+	 * @return string the post's HTML content
+	 */
+	private function get_full_content( $post ) {
+		// Keep get_the_content()'s behavior for password-protected posts, so
+		// their bodies don't end up in a public static site.
+		if ( post_password_required( $post ) ) {
+			return get_the_password_form( $post );
+		}
+
+		// Normalize custom More text (<!--more Keep reading-->) to the bare tag
+		// static site generators look for. The Markdown converter keeps it and
+		// drops other comments, including <!--nextpage--> and block delimiters.
+		return (string) preg_replace( '/<!--more(.*?)?-->/', '<!--more-->', $post->post_content );
 	}
 
 	/**

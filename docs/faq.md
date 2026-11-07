@@ -35,3 +35,7 @@ Yes, into `_drafts/`. To leave them out, use `wp jekyll-export --post_status=pub
 ### Does it export custom post types and custom fields?
 
 Custom fields are exported as front matter. Custom post types need one filter to include them, and the export then declares each one as a Jekyll collection. See [Custom post types](custom-post-types.md) and [Custom fields](custom-fields.md).
+
+### Does the export include the text after a "More" tag?
+
+Yes. Each post is exported in full, including everything after a More tag (the "Continue reading" break) and every page of a post split with a Page Break. The More tag stays in the Markdown as `<!--more-->`, which Hugo treats as the end of a post's summary. To use it for excerpts in Jekyll, add `excerpt_separator: <!--more-->` to `_config.yml`.
