@@ -13,5 +13,3 @@ Primary Branch: main
 Export WordPress posts, pages, and media to Markdown with YAML front matter for Jekyll, Hugo, and other static site generators.
 
 == Description ==
-
-One-click WordPress plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML which can be dropped into Jekyll (or Hugo or any other Markdown and YAML based site engine).

@@ -26,6 +26,16 @@
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_mkdir" />
 		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed" />
 	</rule>
+	<!-- Translations come from translate.wordpress.org as language packs, which
+	     only cover strings in the plugin's slug. Pin the text domain so a typo
+	     fails the build instead of silently never being translated. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="jekyll-exporter"/>
+			</property>
+		</properties>
+	</rule>
 	<rule ref="WordPress-Docs" />
 
 	<!-- Flag PHP syntax and functions that don't exist on the minimum supported

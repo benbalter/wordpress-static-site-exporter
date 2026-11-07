@@ -20,9 +20,13 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	class Jekyll_Export_Command extends WP_CLI_Command {
 
 		/**
-		 * Export WordPress content to Jekyll format.
+		 * Export WordPress content as Markdown for a static site generator.
 		 *
 		 * ## OPTIONS
+		 *
+		 * [--format=<format>]
+		 * : Lay the export out for this static site generator: jekyll (the
+		 * default), hugo, astro, or eleventy.
 		 *
 		 * [--category=<category>]
 		 * : Export only posts from this category (slug or comma-separated slugs).
@@ -50,6 +54,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 *     # Export all content
 		 *     $ wp jekyll-export > export.zip
 		 *
+		 *     # Export for Hugo instead of Jekyll
+		 *     $ wp jekyll-export --format=hugo --output=export.zip
+		 *
 		 *     # Export only posts in "technology" category
 		 *     $ wp jekyll-export --category=technology > export.zip
 		 *
@@ -73,6 +80,18 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 */
 		public function __invoke( $args = array(), $assoc_args = array() ) {
 			global $jekyll_export;
+
+			// Check the format first, so a typo fails before any work starts.
+			if ( ! empty( $assoc_args['format'] ) && ! $jekyll_export->set_format( $assoc_args['format'] ) ) {
+				WP_CLI::error(
+					sprintf(
+						/* translators: 1: requested format, 2: comma-separated list of available formats */
+						__( 'Unknown export format "%1$s". Choose one of: %2$s.', 'jekyll-exporter' ),
+						$assoc_args['format'],
+						implode( ', ', Jekyll_Export_Format::slugs() )
+					)
+				);
+			}
 
 			// Set up taxonomy filters based on CLI arguments.
 			$taxonomy_filters = array();
@@ -135,7 +154,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			}
 
 			$jekyll_export->export( $assoc_args['output'] );
-			WP_CLI::success( sprintf( 'Exported to %s', $assoc_args['output'] ) );
+			/* translators: %s: path of the zip file the export was written to */
+			WP_CLI::success( sprintf( __( 'Exported to %s', 'jekyll-exporter' ), $assoc_args['output'] ) );
 		}
 	}
 

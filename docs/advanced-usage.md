@@ -1,0 +1,27 @@
+# Advanced usage
+
+Most sites only need the export from the Tools menu. Everything here is optional.
+
+## Export for Hugo, Astro, or Eleventy
+
+Jekyll is the default. Pick Hugo, Astro, or Eleventy from the format dropdown, or pass `--format=hugo` (or `astro`, `eleventy`) on the command line, and the export is laid out for that generator. See [Output formats](output-formats.md).
+
+## Export from the command line
+
+Large sites can time out in the browser. [WP-CLI](command-line-usage.md) runs outside the web server, so its time limit doesn't apply, and it writes the zip straight to a file:
+
+```
+wp jekyll-export --output=export.zip
+```
+
+## Choose what to export
+
+Export one category, tag, post type, or status, from the command line or with PHP filters. See [Selective export](selective-export.md).
+
+## Custom post types and custom fields
+
+Custom post types need one filter to be included, and are exported as Jekyll collections. Custom fields become front matter, and filters let you rename, drop, or add fields. See [Custom post types](custom-post-types.md) and [Custom fields](custom-fields.md).
+
+## Large sites
+
+Skipping uploads, excluding cache folders, and raising PHP's limits all help. See [Performance tips for large sites](performance-tips.md).

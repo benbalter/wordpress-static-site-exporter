@@ -513,9 +513,9 @@ class EdgeCasesTest extends WP_UnitTestCase {
 			remove_filter( 'wp_php_error_args', array( $jekyll_export, 'fatal_error_args' ), 10 );
 		}
 
-		$this->assertStringContainsString( 'Jekyll Export failed: Allowed memory size', $message );
+		$this->assertStringContainsString( 'Export failed: Allowed memory size', $message );
 		$this->assertStringContainsString( 'memory_limit', $message );
-		$this->assertSame( 'Jekyll Export Error', $args['title'] );
+		$this->assertSame( 'Static Site Exporter', $args['title'] );
 		$this->assertSame( 500, $args['response'] );
 	}
 

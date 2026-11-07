@@ -1,41 +1,33 @@
 ![Static Site Exporter: WordPress to Markdown for Jekyll, Hugo, and more](../.wordpress-org/banner-1544x500.png)
   
-# Static Site Exporter: WordPress to Jekyll and Hugo Markdown exporter
+# Static Site Exporter
 
-One-click WordPress plugin that converts all posts, pages, taxonomies, metadata, and settings to Markdown and YAML which can be dropped into Jekyll (or Hugo or any other Markdown and YAML based site engine).
+Export your WordPress posts and pages to Markdown in a couple of clicks, ready for Jekyll, Hugo, or any other static site generator.
 
 [![WordPress plugin version](https://img.shields.io/wordpress/plugin/v/jekyll-exporter)](https://wordpress.org/plugins/jekyll-exporter/) [![WordPress plugin rating](https://img.shields.io/wordpress/plugin/rating/jekyll-exporter)](https://wordpress.org/support/plugin/jekyll-exporter/reviews/) [![CI](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/benbalter/wordpress-static-site-exporter/actions/workflows/ci.yml) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
-View plugin in [the WordPress plugin directory](https://wordpress.org/plugins/jekyll-exporter/).
-
 ## Features
 
-* Converts all posts, pages, and settings from WordPress to Markdown and YAML for use in Jekyll (or Hugo or any other Markdown and YAML based site engine)
-* Export what your users see, not what the database stores (runs post content through `the_content` filter prior to export, allowing third-party plugins to modify the output)
-* Converts all `post_content` to Markdown
-* Converts all `post_meta` and fields within the `wp_posts` table to YAML front matter for parsing by Jekyll
-* Generates a `_config.yml` with all settings in the `wp_options` table
-* Outputs a single zip file with `_config.yml`, pages, and `_posts` folder containing `.md` files for each post in the proper Jekyll naming convention
-* **Selective export**: Export only specific categories, tags, or post types using WP-CLI
-* No settings. Just a single click.
+* **One screen, no settings.** Choose *Export to Static Site* from the Tools menu, click Export, and download a zip. Nothing to configure first.
+* **Your content, as Markdown.** Posts, pages, and drafts become Markdown files. Each one starts with its title, date, author, categories, tags, and custom fields.
+* **Images come along.** Your uploaded images and files are included, and links to them keep working.
+* **Jekyll, Hugo, Astro, or Eleventy.** Jekyll is the default; pick another generator and the export uses its folders and config.
+* **Old links keep working.** On Jekyll, Hugo, and Eleventy, each post keeps its original web address.
 
 ## Usage
 
-1. In your WordPress dashboard, go to **Plugins → Add New**, search for **Static Site Exporter**, then install and activate it
-2. Select `Export to Jekyll` from the `Tools` menu
-3. Unzip the download into your static site
+1. In your WordPress dashboard, go to **Plugins → Add New**, search for **Static Site Exporter**, then install and activate it.
+2. Choose **Export to Static Site** from the **Tools** menu.
+3. Pick your static site generator (Jekyll is the default), then click **Export**.
+4. Unzip the download into your site. [Output formats](output-formats.md) says where each generator's files go.
 
-For large sites, use [WP-CLI](command-line-usage.md) instead: `wp jekyll-export --output=export.zip`.
+That's it. Need more control? You can [export from the command line, pick which posts to export, include custom post types, and customize the output](advanced-usage.md).
 
 ## More information
 
-See [the full documentation](https://github.com/benbalter/wordpress-static-site-exporter/tree/main/docs):
-
-* [Frequently asked questions](../docs/faq.md)
-* [Changelog](../docs/changelog.md)
-* [Command-line-usage](../docs/command-line-usage.md)
-* [Selective export by category or tag](../docs/selective-export.md)
-* [Custom post types](../docs/custom-post-types.md)
-* [Custom fields](../docs/custom-fields.md)
-* [Developing locally](../docs/developing-locally.md)
-* [Minimum required PHP version](../docs/required-php-version.md)
+* [Frequently asked questions](faq.md)
+* [Advanced usage](advanced-usage.md)
+* [Changelog](changelog.md)
+* [Get help or report an issue](SUPPORT.md)
+* [Help translate it into your language](https://translate.wordpress.org/projects/wp-plugins/jekyll-exporter/)
+* [Contribute](CONTRIBUTING.md) or [develop locally](developing-locally.md)

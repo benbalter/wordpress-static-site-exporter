@@ -24,7 +24,7 @@
 // expensive and confirms install/plugin paths; refuse early if not invoked from CLI.
 if ( PHP_SAPI !== 'cli' ) {
 	http_response_code( 403 );
-	exit( 'Jekyll export must be run via the command line or administrative dashboard.' );
+	exit( 'Static Site Exporter must be run via the command line or administrative dashboard.' );
 }
 
 require '../../../wp-load.php';
