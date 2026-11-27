@@ -914,6 +914,43 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that zip_folder() leaves out a symlink that resolves outside the
+	 * folder being zipped.
+	 *
+	 * Otherwise a symlink added to the export folder would copy an arbitrary
+	 * server file into the download.
+	 */
+	function test_zip_folder_skips_symlink_pointing_outside_source() {
+		global $jekyll_export;
+
+		$outside = tempnam( get_temp_dir(), 'jekyll-outside-' );
+		file_put_contents( $outside, 'secret-outside-content' );
+
+		file_put_contents( $jekyll_export->dir . 'inside.txt', 'inside-content' );
+		if ( ! @symlink( $outside, $jekyll_export->dir . 'link.txt' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Symlinks may be unsupported; the test is skipped below.
+			unlink( $outside );
+			$this->markTestSkipped( 'Symlinks are not supported here.' );
+		}
+
+		$archive = $jekyll_export->dir . '../jekyll-symlink-test.zip';
+		$jekyll_export->zip_folder( $jekyll_export->dir, $archive );
+
+		$zip = new ZipArchive();
+		$zip->open( $archive );
+		$contents = '';
+		for ( $i = 0; $i < $zip->numFiles; $i++ ) {
+			$contents .= (string) $zip->getFromIndex( $i );
+		}
+		$zip->close();
+
+		unlink( $archive );
+		unlink( $outside );
+
+		$this->assertStringContainsString( 'inside-content', $contents, 'Files inside the folder should still be zipped.' );
+		$this->assertStringNotContainsString( 'secret-outside-content', $contents, 'A symlink to a file outside the folder must not be zipped.' );
+	}
+
+	/**
 	 * Test that zip_folder() throws when the archive cannot be written.
 	 *
 	 * ZipArchive defers all writes to close(), so an unwritable destination
