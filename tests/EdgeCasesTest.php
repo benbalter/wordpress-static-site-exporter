@@ -1091,6 +1091,31 @@ class EdgeCasesTest extends WP_UnitTestCase {
 			ob_end_clean();
 		}
 	}
+
+	/**
+	 * Test that copy_recursive() skips an unreadable directory with no PHP
+	 * warning, now that scandir() is no longer silenced with `@`.
+	 */
+	function test_copy_recursive_skips_unreadable_directory() {
+		global $jekyll_export;
+
+		if ( function_exists( 'posix_geteuid' ) && 0 === posix_geteuid() ) {
+			$this->markTestSkipped( 'Root can read any directory, so it cannot be made unreadable.' );
+		}
+
+		$source = trailingslashit( get_temp_dir() ) . 'jekyll-unreadable-' . wp_generate_password( 8, false );
+		mkdir( $source );
+		chmod( $source, 0000 );
+
+		// PHPUnit turns a PHP warning into a failure, so reaching the assertion
+		// proves nothing was raised.
+		$result = $jekyll_export->copy_recursive( $source, $jekyll_export->dir . 'unreadable-test' );
+
+		chmod( $source, 0755 );
+		rmdir( $source );
+
+		$this->assertFalse( $result, 'An unreadable directory should be skipped.' );
+	}
 }
 
 /**
