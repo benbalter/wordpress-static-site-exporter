@@ -945,8 +945,11 @@ class Jekyll_Export {
 		}
 
 		// Disable PHP time limit to prevent timeout during large exports.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,Squiz.PHP.DiscouragedFunctions.Discouraged -- Large exports need more than the default time limit; silenced because set_time_limit may be disabled on some hosts.
-		@set_time_limit( 0 );
+		// Skipped when a host lists set_time_limit() in disable_functions.
+		if ( function_exists( 'set_time_limit' ) ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Large exports need more than the default time limit.
+			set_time_limit( 0 );
+		}
 
 		// Attempt to increase memory limit for large exports.
 		wp_raise_memory_limit( 'jekyll_export' );
@@ -1522,11 +1525,14 @@ TS
 		clearstatcache( true, $this->zip );
 		$size = filesize( $this->zip );
 
-		// Send headers.
-		@header( 'Content-Type: application/zip' );
-		@header( 'Content-Disposition: attachment; filename=' . sanitize_file_name( $this->get_format()->slug . '-export.zip' ) );
-		if ( false !== $size ) {
-			@header( 'Content-Length: ' . $size );
+		// Send headers. Under WP-CLI, or when a caller already started output,
+		// header() would only raise a "headers already sent" warning.
+		if ( ! headers_sent() ) {
+			header( 'Content-Type: application/zip' );
+			header( 'Content-Disposition: attachment; filename=' . sanitize_file_name( $this->get_format()->slug . '-export.zip' ) );
+			if ( false !== $size ) {
+				header( 'Content-Length: ' . $size );
+			}
 		}
 
 		// Stream the zip in chunks to avoid loading the entire file into
@@ -1571,14 +1577,14 @@ TS
 	/**
 	 * Rename an assoc. array's key without changing the order
 	 *
-	 * @param Array  $array the Array.
+	 * @param Array  $data the Array.
 	 * @param String $from the original key.
 	 * @param String $to the resulting key.
 	 * @return void
 	 */
-	public function rename_key( &$array, $from, $to ) {
+	public function rename_key( &$data, $from, $to ) {
 
-		$keys  = array_keys( $array );
+		$keys  = array_keys( $data );
 		$index = array_search( $from, $keys, true );
 
 		if ( false === $index ) {
@@ -1586,7 +1592,7 @@ TS
 		}
 
 		$keys[ $index ] = $to;
-		$array          = array_combine( $keys, $array );
+		$data           = array_combine( $keys, $data );
 	}
 
 	/**
@@ -1708,8 +1714,9 @@ TS
 			wp_mkdir_p( $dest );
 		}
 
-		// Use scandir instead of dir() for better performance.
-		$entries = @scandir( $source );
+		// Use scandir instead of dir() for better performance. Check readability
+		// first so an unreadable directory is skipped without a PHP warning.
+		$entries = is_readable( $source ) ? scandir( $source ) : false;
 		if ( false === $entries ) {
 			return false;
 		}
