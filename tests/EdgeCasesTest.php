@@ -914,6 +914,43 @@ class EdgeCasesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the messages of exceptions shown to the admin are translatable.
+	 *
+	 * export() renders these through wp_die(), so a hardcoded English string
+	 * would never reach a language pack.
+	 */
+	function test_export_exception_messages_are_translatable() {
+		global $jekyll_export;
+
+		$translate = function ( $translation, $text, $domain ) {
+			return 'jekyll-exporter' === $domain ? '[translated] ' . $translation : $translation;
+		};
+		add_filter( 'gettext', $translate, 10, 3 );
+
+		$message = '';
+		try {
+			$jekyll_export->zip_folder( '/path/that/definitely/does/not/exist', $jekyll_export->dir . 'out.zip' );
+		} catch ( \RuntimeException $e ) {
+			$message = $e->getMessage();
+		}
+
+		file_put_contents( $jekyll_export->dir . 'content.txt', 'content' );
+
+		$write_message = '';
+		try {
+			$jekyll_export->zip_folder( $jekyll_export->dir, '/path/that/definitely/does/not/exist/out.zip' );
+		} catch ( \RuntimeException $e ) {
+			$write_message = $e->getMessage();
+		}
+
+		remove_filter( 'gettext', $translate, 10 );
+
+		$this->assertStringStartsWith( '[translated] ', $message, 'The missing source message should go through translation.' );
+		$this->assertStringContainsString( '/path/that/definitely/does/not/exist', $message, 'The path placeholder should still be filled in.' );
+		$this->assertStringStartsWith( '[translated] ', $write_message, 'The unwritable destination message should go through translation.' );
+	}
+
+	/**
 	 * Test that zip_folder() throws when the archive cannot be written.
 	 *
 	 * ZipArchive defers all writes to close(), so an unwritable destination

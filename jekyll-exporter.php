@@ -1332,8 +1332,13 @@ TS
 	public function zip_folder( $source, $destination ) {
 
 		if ( ! file_exists( $source ) ) {
+			$message = sprintf(
+				/* translators: %s: path of the folder that was meant to be zipped */
+				__( 'File does not exist: %s', 'jekyll-exporter' ),
+				$source
+			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'file does not exist: %s', $source ) );
+			throw new \RuntimeException( $message );
 		}
 
 		$source = realpath( $source );
@@ -1344,8 +1349,14 @@ TS
 		// code on failure, so a falsy check never catches an error.
 		$opened = $zip->open( $destination, ZipArchive::CREATE | ZIPARCHIVE::OVERWRITE );
 		if ( true !== $opened ) {
+			$message = sprintf(
+				/* translators: 1: path of the zip archive, 2: numeric error code returned by ZipArchive */
+				__( 'Cannot open zip archive %1$s (error code %2$d)', 'jekyll-exporter' ),
+				$destination,
+				(int) $opened
+			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'Cannot open zip archive %s (error code %d)', $destination, (int) $opened ) );
+			throw new \RuntimeException( $message );
 		}
 
 		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $source, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::SELF_FIRST );
@@ -1378,9 +1389,15 @@ TS
 		$status = @$zip->close();
 		if ( ! $status ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- getStatusString() can warn on an archive that failed to close.
-			$reason = (string) @$zip->getStatusString();
+			$reason  = (string) @$zip->getStatusString();
+			$message = sprintf(
+				/* translators: 1: path of the zip archive, 2: reason reported by ZipArchive */
+				__( 'Cannot write zip archive %1$s: %2$s', 'jekyll-exporter' ),
+				$destination,
+				$reason
+			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'Cannot write zip archive %s: %s', $destination, $reason ) );
+			throw new \RuntimeException( $message );
 		}
 
 		return $status;
@@ -1399,7 +1416,8 @@ TS
 		clearstatcache( true, $this->zip );
 		if ( ! file_exists( $this->zip ) || filesize( $this->zip ) < 1 ) {
 			$message = sprintf(
-				'The export archive (%s) is missing or empty. This usually means the server ran out of disk space or the temporary directory quota was exhausted.',
+				/* translators: %s: path of the export archive */
+				__( 'The export archive (%s) is missing or empty. This usually means the server ran out of disk space or the temporary directory quota was exhausted.', 'jekyll-exporter' ),
 				$this->zip
 			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
@@ -1490,8 +1508,13 @@ TS
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Failure is handled explicitly below; see above.
 		$handle = @fopen( $this->zip, 'rb' );
 		if ( false === $handle ) {
+			$message = sprintf(
+				/* translators: %s: path of the export archive */
+				__( 'The export archive (%s) could not be opened for reading.', 'jekyll-exporter' ),
+				$this->zip
+			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'The export archive (%s) could not be opened for reading.', $this->zip ) );
+			throw new \RuntimeException( $message );
 		}
 
 		// Nothing below this point may be buffered or rewritten.  Skipped under
@@ -1511,7 +1534,8 @@ TS
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closes the stream opened above.
 
 			$message = sprintf(
-				'Cannot send the export because output was already sent by %1$s on line %2$d. A theme or another plugin is printing content (often a stray blank line or byte order mark) before the download starts.',
+				/* translators: 1: path of the file that sent output, 2: line number in that file */
+				__( 'Cannot send the export because output was already sent by %1$s on line %2$d. A theme or another plugin is printing content (often a stray blank line or byte order mark) before the download starts.', 'jekyll-exporter' ),
 				$sent_file,
 				$sent_line
 			);
@@ -1552,8 +1576,13 @@ TS
 		global $wp_filesystem;
 
 		if ( ! $wp_filesystem->copy( $this->zip, $destination, true ) ) {
+			$message = sprintf(
+				/* translators: %s: path the archive was meant to be written to */
+				__( 'The export archive could not be written to %s.', 'jekyll-exporter' ),
+				$destination
+			);
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception message is caught by export() and rendered through wp_die() which escapes it.
-			throw new \RuntimeException( sprintf( 'The export archive could not be written to %s.', $destination ) );
+			throw new \RuntimeException( $message );
 		}
 	}
 
