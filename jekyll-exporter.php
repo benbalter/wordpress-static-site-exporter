@@ -1360,6 +1360,14 @@ TS
 				continue;
 			}
 
+			// A symlink dropped into the export folder (for example by a hook on
+			// `jekyll_export`) resolves to its target. Skip anything that resolves
+			// outside the folder, so it can't pull an arbitrary server file into
+			// the download.
+			if ( 0 !== strpos( trailingslashit( $real_file ), trailingslashit( $source ) ) ) {
+				continue;
+			}
+
 			$local_name = substr( $real_file, strlen( $source ) + 1 );
 			if ( '' === $local_name ) {
 				continue;
